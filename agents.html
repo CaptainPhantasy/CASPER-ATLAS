@@ -1,0 +1,3851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CASPER Atlas · Multi-Agent Delivery Orchestrator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --color-bg: #040816;
+            --color-bg-alt: #101b33;
+            --color-text: #f8fafc;
+            --color-muted: rgba(186, 199, 222, 0.78);
+            --color-subtle: rgba(148, 163, 184, 0.58);
+            --color-border: rgba(87, 112, 164, 0.28);
+            --gradient-accent: linear-gradient(135deg, #38bdf8, #818cf8);
+            --gradient-surface: linear-gradient(155deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.08));
+            --shadow-elevated: 0 30px 80px -36px rgba(15, 23, 42, 0.9);
+            --shadow-glow: 0 24px 60px -32px rgba(56, 189, 248, 0.55);
+            --card-radius: 24px;
+            --glass-border: rgba(148, 172, 229, 0.22);
+            --glass-highlight: rgba(255, 255, 255, 0.18);
+            --glass-overlay: radial-gradient(circle at top left, rgba(148, 197, 255, 0.22), transparent 55%);
+        }
+
+        body.theme-warm {
+            color-scheme: light;
+            --color-bg: #f2e4cf;
+            --color-bg-alt: #ebd7b8;
+            --color-text: #2c2218;
+            --color-muted: rgba(102, 79, 54, 0.78);
+            --color-subtle: rgba(120, 88, 60, 0.55);
+            --color-border: rgba(198, 142, 84, 0.32);
+            --gradient-accent: linear-gradient(135deg, #f7a229, #e9803d);
+            --gradient-surface: linear-gradient(155deg, rgba(247, 193, 118, 0.28), rgba(226, 164, 96, 0.14));
+            --shadow-elevated: 0 30px 70px -34px rgba(172, 108, 44, 0.4);
+            --shadow-glow: 0 26px 58px -32px rgba(206, 144, 58, 0.5);
+            --glass-border: rgba(194, 146, 104, 0.28);
+            --glass-highlight: rgba(255, 246, 229, 0.22);
+            --glass-overlay: radial-gradient(circle at top left, rgba(255, 214, 153, 0.25), transparent 55%);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 45%),
+                        radial-gradient(circle at bottom right, rgba(88, 104, 240, 0.18), transparent 40%),
+                        linear-gradient(160deg, var(--color-bg) 0%, var(--color-bg-alt) 100%);
+            color: var(--color-text);
+            transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        body.theme-warm {
+            background: radial-gradient(circle at top left, rgba(234, 190, 128, 0.35), transparent 48%),
+                        radial-gradient(circle at bottom right, rgba(216, 143, 76, 0.32), transparent 42%),
+                        linear-gradient(160deg, var(--color-bg) 0%, var(--color-bg-alt) 100%);
+        }
+
+        .page-wrapper {
+            position: relative;
+            padding: 64px clamp(24px, 6vw, 72px) 120px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glow {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 999px;
+            filter: blur(80px);
+            opacity: 0.6;
+        }
+
+        .glow--one {
+            width: 360px;
+            height: 360px;
+            top: -120px;
+            left: -60px;
+            background: rgba(56, 189, 248, 0.55);
+        }
+
+        .glow--two {
+            width: 400px;
+            height: 400px;
+            right: -180px;
+            top: 40%;
+            background: rgba(129, 140, 248, 0.45);
+        }
+
+        .glow--three {
+            width: 520px;
+            height: 520px;
+            left: 35%;
+            bottom: -260px;
+            background: radial-gradient(circle at center, rgba(73, 159, 255, 0.28), rgba(26, 85, 177, 0.08));
+        }
+
+        body.showing-splash .page-wrapper {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .page-wrapper {
+            transition: opacity 0.6s ease;
+        }
+
+        .splash-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.98));
+            z-index: 1200;
+            transition: opacity 0.6s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-video {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        body.theme-warm .glow--one {
+            background: rgba(250, 204, 21, 0.55);
+        }
+
+        body.theme-warm .glow--two {
+            background: rgba(249, 115, 22, 0.45);
+        }
+
+        body.theme-warm .glow--three {
+            background: radial-gradient(circle at center, rgba(227, 164, 96, 0.35), rgba(178, 112, 54, 0.12));
+        }
+
+        .surface {
+            position: relative;
+            background: rgba(12, 19, 36, 0.72);
+            backdrop-filter: blur(22px) saturate(135%);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-elevated);
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        body.theme-warm .surface {
+            background: rgba(255, 248, 234, 0.68);
+        }
+
+        .surface::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--glass-overlay);
+            opacity: 0.6;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .surface::after {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: calc(var(--card-radius) - 1px);
+            border: 1px solid var(--glass-highlight);
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 28px;
+            margin-bottom: 32px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: var(--gradient-accent);
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .brand-copy {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-copy strong {
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-copy span {
+            font-size: 0.8rem;
+            color: var(--color-subtle);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .top-bar__actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            background: var(--gradient-accent);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .top-link {
+            color: var(--color-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 10px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--color-border);
+            transition: all 0.3s ease;
+        }
+
+        .top-link:hover {
+            color: var(--color-text);
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+
+        .hero-card {
+            padding: clamp(32px, 6vw, 56px);
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.06);
+            font-size: 0.78rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-muted);
+        }
+
+        .hero-title {
+            margin-top: 18px;
+            margin-bottom: 16px;
+            font-size: clamp(2.4rem, 4vw, 3.6rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .hero-subtitle {
+            max-width: 720px;
+            color: var(--color-muted);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .hero-highlights {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+        }
+
+        .highlight-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--color-muted);
+            font-size: 0.9rem;
+        }
+
+        .input-card {
+            padding: clamp(28px, 5vw, 44px);
+            margin-bottom: 32px;
+        }
+
+        .input-card header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .input-card header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+        }
+
+        .input-card header span {
+            color: var(--color-subtle);
+            font-size: 0.9rem;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 12px;
+            color: var(--color-muted);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(1, 10, 28, 0.65);
+            color: var(--color-text);
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body.theme-warm textarea {
+            background: rgba(244, 218, 184, 0.85);
+            color: var(--color-text);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: rgba(56, 189, 248, 0.6);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 12px 22px;
+            font-size: 0.95rem;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .btn-primary {
+            background: var(--gradient-accent);
+            color: #fff;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--color-muted);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        body.theme-warm .btn-secondary {
+            background: rgba(238, 200, 160, 0.6);
+            color: #5a3c22;
+            border-color: rgba(198, 136, 78, 0.3);
+        }
+
+        .btn-secondary:hover {
+            color: var(--color-text);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--color-muted);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-ghost:hover {
+            color: var(--color-text);
+        }
+
+        body.theme-warm .btn-ghost {
+            color: #5a3c22;
+            border-color: rgba(198, 136, 78, 0.3);
+        }
+
+        .input-tips {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .tip-card {
+            background: rgba(6, 11, 24, 0.45);
+            border: 1px dashed rgba(255, 255, 255, 0.14);
+            border-radius: 18px;
+            padding: 16px 18px;
+            color: var(--color-subtle);
+            font-size: 0.9rem;
+            backdrop-filter: blur(12px) saturate(135%);
+        }
+
+        body.theme-warm .tip-card {
+            background: rgba(235, 200, 160, 0.62);
+            border-color: rgba(202, 144, 90, 0.3);
+        }
+
+        .output-section {
+            display: none;
+        }
+
+        .output-section.active {
+            display: grid;
+            gap: 24px;
+        }
+
+        .analysis-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media (min-width: 1080px) {
+            .analysis-grid {
+                grid-template-columns: 1.1fr 0.9fr;
+            }
+        }
+
+        .analysis-panel {
+            padding: clamp(28px, 4vw, 40px);
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .section-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 16px;
+            background: var(--gradient-accent);
+            color: #fff;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .section-heading h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+        }
+
+        .section-heading span {
+            color: var(--color-subtle);
+            font-size: 0.9rem;
+        }
+
+        .metric-grid {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .metric-card {
+            position: relative;
+            padding: 22px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(8, 14, 31, 0.6);
+            backdrop-filter: blur(16px) saturate(150%);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 168px;
+        }
+
+        body.theme-warm .metric-card {
+            background: rgba(242, 212, 176, 0.7);
+            border-color: rgba(204, 148, 96, 0.32);
+        }
+
+        .metric-card__header {
+            display: flex;
+            gap: 14px;
+        }
+
+        .metric-card__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: rgba(56, 189, 248, 0.18);
+            color: #38bdf8;
+        }
+
+        body.theme-warm .metric-card__icon {
+            background: rgba(251, 191, 36, 0.2);
+            color: #d97706;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .metric-subtext {
+            margin-top: 4px;
+            font-size: 0.85rem;
+            color: var(--color-subtle);
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-badge {
+            align-self: flex-start;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+        }
+
+        body.theme-warm .metric-badge {
+            background: rgba(251, 191, 36, 0.25);
+            color: #c2410c;
+        }
+
+        .panel-block {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel-block__header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .domain-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .domain-chip {
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        body.theme-warm .domain-chip {
+            background: rgba(251, 191, 36, 0.25);
+            color: #c2410c;
+        }
+
+        .sprint-track {
+            display: grid;
+            gap: 16px;
+        }
+
+        .sprint-card {
+            border-radius: 18px;
+            padding: 18px 20px;
+            background: rgba(6, 12, 27, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(14px) saturate(140%);
+        }
+
+        body.theme-warm .sprint-card {
+            background: rgba(244, 209, 173, 0.7);
+            border-color: rgba(210, 148, 84, 0.28);
+        }
+
+        .sprint-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .sprint-label {
+            font-weight: 600;
+        }
+
+        .sprint-subtext {
+            color: var(--color-subtle);
+            font-size: 0.85rem;
+        }
+
+        .sprint-badge {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--color-muted);
+        }
+
+        .sprint-epic-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sprint-epic {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .epic-title {
+            font-weight: 600;
+            margin: 0 0 4px;
+        }
+
+        .epic-description {
+            margin: 0;
+            color: var(--color-subtle);
+            font-size: 0.88rem;
+        }
+
+        .epic-tag {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .epic-tag--critical {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+        }
+
+        .epic-tag--high {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fbbf24;
+        }
+
+        .epic-tag--medium {
+            background: rgba(96, 165, 250, 0.18);
+            color: #60a5fa;
+        }
+
+        .epic-tag--low {
+            background: rgba(74, 222, 128, 0.18);
+            color: #4ade80;
+        }
+
+        .decomposition-summary {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 12px;
+        }
+
+        .decomposition-summary li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--color-muted);
+            font-size: 0.92rem;
+        }
+
+        .agent-grid {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        }
+
+        .agent-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px 22px;
+            background: rgba(7, 13, 27, 0.6);
+            backdrop-filter: blur(16px) saturate(148%);
+            transition: border 0.3s ease, transform 0.3s ease;
+        }
+
+        .agent-card:hover {
+            border-color: rgba(56, 189, 248, 0.35);
+            transform: translateY(-2px);
+        }
+
+        body.theme-warm .agent-card {
+            background: rgba(242, 208, 170, 0.7);
+            border-color: rgba(210, 138, 70, 0.3);
+        }
+
+        .agent-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .agent-identity {
+            display: grid;
+            gap: 6px;
+        }
+
+        .agent-level {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--color-muted);
+            letter-spacing: 0.08em;
+        }
+
+        body.theme-warm .agent-level {
+            background: rgba(233, 188, 142, 0.38);
+            color: #724421;
+        }
+
+        .agent-name {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .agent-specialization {
+            font-size: 0.85rem;
+            color: var(--color-subtle);
+        }
+
+        .agent-meta {
+            display: grid;
+            gap: 6px;
+            text-align: right;
+        }
+
+        .agent-status {
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .agent-status--active {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+        }
+
+        .agent-status--ready {
+            background: rgba(96, 165, 250, 0.18);
+            color: #60a5fa;
+        }
+
+        .agent-status--queued {
+            background: rgba(148, 163, 184, 0.18);
+            color: #cbd5f5;
+        }
+
+        .agent-sprint {
+            font-size: 0.85rem;
+            color: var(--color-subtle);
+        }
+
+        .agent-data {
+            display: grid;
+            gap: 12px;
+            margin: 0 0 16px;
+        }
+
+        .agent-data div {
+            display: grid;
+            gap: 4px;
+        }
+
+        .agent-data dt {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-subtle);
+        }
+
+        .agent-data dd {
+            margin: 0;
+            font-size: 0.92rem;
+        }
+
+        .context-meter {
+            position: relative;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .context-meter__fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: inherit;
+            transition: width 0.4s ease;
+        }
+
+        .context-meter__label {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.78rem;
+            color: var(--color-subtle);
+        }
+
+        .agent-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--color-muted);
+            cursor: pointer;
+        }
+
+        .agent-card.is-open .agent-toggle {
+            background: rgba(56, 189, 248, 0.12);
+            color: #38bdf8;
+        }
+
+        body.theme-warm .agent-toggle {
+            background: rgba(233, 196, 152, 0.45);
+            border-color: rgba(198, 136, 78, 0.22);
+            color: #5a3c22;
+        }
+
+        body.theme-warm .agent-card.is-open .agent-toggle {
+            background: rgba(247, 177, 94, 0.32);
+            color: #b85a10;
+        }
+
+        .agent-prompt {
+            margin-top: 0;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease;
+        }
+
+        .agent-prompt.is-open,
+        .agent-card.is-open .agent-prompt {
+            max-height: 420px;
+            opacity: 1;
+            margin-top: 18px;
+        }
+
+        .agent-prompt__actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .agent-prompt__content {
+            margin: 0;
+            padding: 16px 18px;
+            background: rgba(1, 10, 28, 0.65);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--color-muted);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            max-height: 320px;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+
+        body.theme-warm .agent-prompt__content {
+            background: rgba(238, 206, 166, 0.82);
+            color: #3f2f1f;
+        }
+
+        .hierarchy-panel {
+            padding: clamp(28px, 4vw, 40px);
+        }
+
+        .hierarchy-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media (min-width: 960px) {
+            .hierarchy-grid {
+                grid-template-columns: 0.9fr 1.1fr;
+            }
+        }
+
+        .hierarchy-master {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 20px;
+            border-radius: 18px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+        }
+
+        body.theme-warm .hierarchy-master {
+            background: rgba(251, 191, 36, 0.22);
+            border-color: rgba(251, 191, 36, 0.35);
+        }
+
+        .hierarchy-master__badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            background: #fff;
+            color: #1e293b;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+
+        .hierarchy-master__title {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .hierarchy-master__subtitle {
+            margin: 4px 0 0;
+            font-size: 0.88rem;
+            color: var(--color-subtle);
+        }
+
+        .hierarchy-master__scope {
+            margin-left: auto;
+            font-size: 0.82rem;
+            color: var(--color-muted);
+        }
+
+        .hierarchy-columns {
+            display: grid;
+            gap: 18px;
+        }
+
+        .hierarchy-column {
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 18px 20px;
+            background: rgba(7, 12, 27, 0.52);
+            backdrop-filter: blur(12px) saturate(140%);
+        }
+
+        .hierarchy-column__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .hierarchy-column__label {
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .hierarchy-prime {
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 16px 18px;
+            background: rgba(6, 11, 24, 0.5);
+            margin-bottom: 12px;
+            backdrop-filter: blur(12px) saturate(140%);
+        }
+
+        .hierarchy-prime header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hierarchy-level {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--color-muted);
+        }
+
+        .hierarchy-status {
+            margin-left: auto;
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+        }
+
+        .hierarchy-status--active {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+        }
+
+        .hierarchy-status--ready {
+            background: rgba(96, 165, 250, 0.18);
+            color: #60a5fa;
+        }
+
+        .hierarchy-status--queued {
+            background: rgba(148, 163, 184, 0.18);
+            color: #cbd5f5;
+        }
+
+        .hierarchy-specialist-list {
+            list-style: none;
+            margin: 14px 0 0;
+            padding: 0;
+            border-left: 2px dashed rgba(255, 255, 255, 0.12);
+            margin-left: 20px;
+        }
+
+        .hierarchy-specialist {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-left: 16px;
+            margin-bottom: 10px;
+            color: var(--color-subtle);
+            font-size: 0.88rem;
+        }
+
+        .hierarchy-empty {
+            margin: 0;
+            color: var(--color-subtle);
+            font-size: 0.88rem;
+        }
+
+        .hierarchy-summary {
+            margin-top: 20px;
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .hierarchy-summary div {
+            min-width: 120px;
+            background: rgba(6, 11, 25, 0.52);
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px) saturate(138%);
+        }
+
+        body.theme-warm .hierarchy-column {
+            background: rgba(239, 204, 164, 0.7);
+            border-color: rgba(205, 145, 84, 0.28);
+        }
+
+        body.theme-warm .hierarchy-prime {
+            background: rgba(235, 192, 150, 0.64);
+            border-color: rgba(205, 140, 76, 0.26);
+        }
+
+        body.theme-warm .hierarchy-summary div {
+            background: rgba(236, 200, 160, 0.66);
+            border-color: rgba(198, 134, 72, 0.24);
+        }
+
+        .summary-label {
+            display: block;
+            font-size: 0.78rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-subtle);
+        }
+
+        .hierarchy-summary strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 1.2rem;
+        }
+
+        .export-panel {
+            padding: clamp(28px, 4vw, 40px);
+        }
+
+        .export-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .copy-success {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 999px;
+            background: var(--gradient-accent);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: var(--shadow-glow);
+            animation: fadeIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+            z-index: 999;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-12px); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 11, 26, 0.82);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+            z-index: 999;
+        }
+
+        .loading-spinner {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            border: 5px solid rgba(148, 163, 184, 0.3);
+            border-top-color: #38bdf8;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .top-bar {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .brand {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .top-bar__actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .hero-highlights {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="theme-dark showing-splash">
+    <div id="atlasSplash" class="splash-screen">
+        <video class="splash-video" src="media.mp4" autoplay muted playsinline></video>
+    </div>
+    <div class="page-wrapper">
+        <div class="glow glow--one"></div>
+        <div class="glow glow--two"></div>
+        <div class="glow glow--three"></div>
+        <header class="top-bar surface">
+            <div class="brand">
+                <span class="brand-mark">AT</span>
+                <div class="brand-copy">
+                    <strong>CASPER Atlas</strong>
+                    <span>Prime orchestrator for multi-agent delivery</span>
+                </div>
+            </div>
+            <div class="top-bar__actions">
+                <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false">
+                    <span data-theme-icon><i data-lucide="moon"></i></span>
+                    <span data-theme-label>Night Mode</span>
+                </button>
+                <a class="top-link" href="#output">Jump to output</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero-card surface">
+                <span class="hero-eyebrow"><i data-lucide="sparkles"></i> CASPER Atlas · v5.0</span>
+                <h1 class="hero-title">Turn project briefs into navigable delivery maps.</h1>
+                <p class="hero-subtitle">CASPER Atlas is the prime orchestrator for multi-agent delivery. It transforms natural-language project context into structured sprint programs—with agent assignments, milestone gates, and export-ready bundles from idea to launch.</p>
+                <div class="hero-highlights">
+                    <div class="highlight-chip"><i data-lucide="workflow"></i> Context-aware sprint blueprints</div>
+                    <div class="highlight-chip"><i data-lucide="users"></i> Atlas-defined agent assignments</div>
+                    <div class="highlight-chip"><i data-lucide="upload-cloud"></i> Exports for humans & AI runners</div>
+                </div>
+            </section>
+
+            <section class="input-card surface">
+                <header>
+                    <h2>Project Intake</h2>
+                    <span>Share mission context so Atlas can assemble the right fleet.</span>
+                </header>
+                <label for="concept">Describe your concept or initiative</label>
+                <textarea id="concept" placeholder="Example: Launch a multi-tenant analytics suite with AI copilots, compliance guardrails, and turnkey integrations..."></textarea>
+                <div class="controls">
+                    <button class="btn btn-primary" type="button" onclick="analyzeProject()"><i data-lucide="sparkle"></i>Generate Atlas Plan</button>
+                    <button class="btn btn-secondary" type="button" onclick="loadExample()"><i data-lucide="wand"></i>Load Example</button>
+                    <button class="btn btn-secondary" type="button" onclick="resetAll()"><i data-lucide="rotate-ccw"></i>Reset</button>
+                </div>
+                <div class="input-tips">
+                    <div class="tip-card">Note timelines, completion percentage, or compliance targets—Atlas adjusts sprint count, gates, and agents automatically.</div>
+                    <div class="tip-card">Call out critical integrations, AI surfaces, or release goals to unlock focused primes and specialist support.</div>
+                </div>
+            </section>
+
+            <section id="output" class="output-section">
+                <div class="analysis-grid">
+                    <section class="analysis-panel surface">
+                        <div class="section-heading">
+                            <span class="section-icon"><i data-lucide="bar-chart-3"></i></span>
+                            <div>
+                                <h2>Program Intelligence</h2>
+                                <span>Complexity diagnostics and sprint timeline</span>
+                            </div>
+                        </div>
+                        <div class="metric-grid" id="metrics"></div>
+                        <div id="decomposition"></div>
+                    </section>
+
+                    <section class="analysis-panel surface">
+                        <div class="section-heading">
+                            <span class="section-icon"><i data-lucide="bot"></i></span>
+                            <div>
+                                <h2>Agent Fleet</h2>
+                                <span>Prime orchestration and specialists per sprint</span>
+                            </div>
+                        </div>
+                        <div id="agents" class="agent-grid"></div>
+                    </section>
+                </div>
+
+                <section class="hierarchy-panel surface" id="hierarchy"></section>
+
+                <section class="export-panel surface">
+                    <div class="section-heading">
+                        <span class="section-icon"><i data-lucide="share"></i></span>
+                        <div>
+                            <h2>Export & Handoffs</h2>
+                            <span>Move the plan into downstream systems</span>
+                        </div>
+                    </div>
+                    <div class="export-actions">
+                        <button class="btn btn-primary" type="button" onclick="exportJSON()"><i data-lucide="braces"></i>Copy JSON</button>
+                        <button class="btn btn-primary" type="button" onclick="exportMarkdown()"><i data-lucide="file-text"></i>Copy Markdown</button>
+                        <button class="btn btn-primary" type="button" onclick="exportMindPal()"><i data-lucide="brain"></i>MindPal Config</button>
+                        <button class="btn btn-primary" type="button" onclick="copyAllPrompts()"><i data-lucide="clipboard-copy"></i>Copy All Prompts</button>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+    <script>
+let currentAnalysis = null;
+
+const THEME_STORAGE_KEY = 'agents-ui-theme';
+
+const PROJECT_PHASE_LABELS = {
+    new_project: 'New Project',
+    completion: 'Completion & Finalization',
+    enhancement: 'Enhancement & Extension',
+    maintenance: 'Maintenance & Stabilization',
+    unknown: 'Undetermined Phase'
+};
+
+const REQUIREMENT_LABELS = {
+    development_workflow: 'Development Workflow',
+    ai_integration: 'AI Intent Processing',
+    distribution: 'Production Distribution',
+    infrastructure: 'Infrastructure',
+    data_platform: 'Data Platform',
+    api_platform: 'API Platform',
+    frontend_experience: 'Frontend Experience',
+    integration: 'Integrations',
+    security: 'Security & Compliance',
+    testing: 'Quality Engineering',
+    documentation: 'Documentation',
+    release_readiness: 'Release Readiness',
+    stabilization: 'Stabilization & Support'
+};
+
+function detectProjectPhase(concept) {
+    const phaseOrder = ['completion', 'enhancement', 'maintenance', 'new_project'];
+    const indicators = {
+        new_project: ['new project', 'from scratch', 'greenfield', 'initial setup', 'fresh build'],
+        completion: ['75% complete', '80% complete', '90% complete', 'remaining', 'finish', 'complete', 'wrap up'],
+        enhancement: ['enhance', 'improve', 'add features', 'extend', 'upgrade', 'refine'],
+        maintenance: ['maintain', 'fix', 'bug', 'issue', 'stabilize', 'support']
+    };
+
+    const lower = concept.toLowerCase();
+    for (const phase of phaseOrder) {
+        if ((indicators[phase] || []).some(keyword => lower.includes(keyword))) {
+            return phase;
+        }
+    }
+
+    return 'unknown';
+}
+
+function analyzeRequirementTypes(concept) {
+    const lower = concept.toLowerCase();
+    const requirementPatterns = {
+        development_workflow: ['development workflow', 'dev command', 'file operation', 'build system', 'generator command', 'git integration', 'scaffolding', 'command suite'],
+        ai_integration: ['ai intent', 'natural language', 'cognitive layer', 'guardrail', 'confidence scoring', 'llm', 'ai integration', 'intent processing', 'prompt orchestration'],
+        distribution: ['production distribution', 'homebrew', 'docker', 'packaging', 'deployment', 'install script', 'release automation', 'artifact publishing'],
+        infrastructure: ['cloud infrastructure', 'ci/cd', 'cicd', 'monitoring', 'baseline security', 'infrastructure', 'devops', 'platform engineering', 'kubernetes', 'terraform', 'multi-tenant', 'multi tenant'],
+        data_platform: ['data architecture', 'database', 'data model', 'schema', 'postgres', 'warehouse', 'lake', 'etl', 'analytics', 'data pipeline'],
+        api_platform: ['api platform', 'rest', 'graphql', 'endpoint', 'auth', 'authentication', 'authorization', 'rate limit', 'api gateway'],
+        frontend_experience: ['frontend', 'front-end', 'ui', 'ux', 'react', 'design system', 'dashboard', 'admin console', 'user interface'],
+        integration: ['integrate', 'integration', 'third-party', 'third party', 'crm', 'billing', 'webhook', 'connector', 'platform integration', 'stripe', 'salesforce'],
+        security: ['security implementation', 'rbac', 'encryption', 'compliance', 'guard', 'zero trust', 'iam', 'security baseline', 'guardrail', 'policy enforcement', 'multi-tenant'],
+        testing: ['testing framework', 'qa', 'quality assurance', 'coverage', 'e2e testing', 'end-to-end testing', 'test automation', 'regression suite'],
+        documentation: ['documentation', 'knowledge base', 'guides', 'training materials', 'runbook', 'playbook'],
+        release_readiness: ['release readiness', 'cutover', 'launch plan', 'go live', 'wrap up', 'wrap', 'release checklist'],
+        stabilization: ['stabilization', 'stabilise', 'post-launch support', 'hypercare', 'production support']
+    };
+
+    const detected = new Set();
+    for (const [reqType, patterns] of Object.entries(requirementPatterns)) {
+        if (patterns.some(pattern => lower.includes(pattern))) {
+            detected.add(reqType);
+        }
+    }
+
+    // Multi-tenant SaaS cues imply both infrastructure and security investments
+    if (lower.includes('multi-tenant') || lower.includes('multi tenant') || lower.includes('saas')) {
+        detected.add('infrastructure');
+        detected.add('security');
+        detected.add('integration');
+    }
+
+    // If the concept mentions timelines for release/finish, assume release readiness work
+    if (/(finish|wrap up|release|go live|cutover|launch)/i.test(lower)) {
+        detected.add('release_readiness');
+    }
+
+    return Array.from(detected);
+}
+
+function analyzeTimelineScope(concept, complexityScore) {
+    const timelinePatterns = {
+        weeks: '(\d+)\s*weeks?',
+        months: '(\d+)\s*months?',
+        sprints: '(\d+)\s*sprints?'
+    };
+
+    const scopeIndicators = {
+        completion: ['complete', 'finish', 'remaining work', 'wrap up'],
+        new_build: ['new', 'from scratch', 'initial build'],
+        enhancement: ['enhance', 'extend', 'augment', 'add']
+    };
+
+    return {
+        duration: extractDuration(concept, timelinePatterns),
+        scope: extractScope(concept, scopeIndicators),
+        complexityHint: complexityScore
+    };
+}
+
+function extractDuration(concept, patterns) {
+    const lower = concept.toLowerCase();
+    const candidates = [];
+
+    Object.entries(patterns).forEach(([unit, pattern]) => {
+        const regex = new RegExp(pattern, 'gi');
+        let match;
+        while ((match = regex.exec(lower)) !== null) {
+            const value = parseInt(match[1], 10);
+            if (Number.isNaN(value)) {
+                continue;
+            }
+            let weeks = value;
+            if (unit === 'months') {
+                weeks = value * 4;
+            }
+            if (unit === 'sprints') {
+                weeks = value * 2;
+            }
+            candidates.push({
+                unit,
+                value,
+                inWeeks: weeks,
+                raw: match[0],
+                index: candidates.length
+            });
+        }
+    });
+
+    if (!candidates.length) {
+        return null;
+    }
+
+    candidates.sort((a, b) => {
+        if (b.inWeeks !== a.inWeeks) {
+            return b.inWeeks - a.inWeeks;
+        }
+        return a.index - b.index;
+    });
+
+    const best = candidates[0];
+    return {
+        unit: best.unit,
+        value: best.value,
+        inWeeks: best.inWeeks,
+        raw: best.raw
+    };
+}
+
+function extractScope(concept, indicators) {
+    const lower = concept.toLowerCase();
+    for (const [scope, keywords] of Object.entries(indicators)) {
+        if (keywords.some(keyword => lower.includes(keyword))) {
+            return scope;
+        }
+    }
+    return 'unspecified';
+}
+
+function selectPlanningStrategy(phase, requirements, timeline) {
+    const strategies = {
+        completion: {
+            focus: 'enhancement_existing',
+            epicPattern: 'enhancement_epics',
+            agentPattern: 'specialist_primes',
+            timelineMultiplier: 0.6
+        },
+        enhancement: {
+            focus: 'feature_addition',
+            epicPattern: 'feature_epics',
+            agentPattern: 'hybrid_primes',
+            timelineMultiplier: 0.8
+        },
+        maintenance: {
+            focus: 'stabilization',
+            epicPattern: 'maintenance_epics',
+            agentPattern: 'stability_primes',
+            timelineMultiplier: 0.7
+        },
+        new_project: {
+            focus: 'foundation_building',
+            epicPattern: 'foundation_epics',
+            agentPattern: 'generalist_primes',
+            timelineMultiplier: 1
+        }
+    };
+
+    if (phase in strategies) {
+        return strategies[phase];
+    }
+
+    if (requirements.length && requirements.some(req => ['development_workflow', 'ai_integration', 'distribution'].includes(req))) {
+        return strategies.completion;
+    }
+
+    return strategies.new_project;
+}
+
+function generateContextualEpics({ concept, requirementTypes, projectPhase, strategy, compliance }) {
+    if (projectPhase === 'new_project') {
+        return generateGreenfieldPlan(concept, requirementTypes);
+    }
+
+    const epics = [];
+
+    if ((projectPhase === 'completion' || projectPhase === 'enhancement') && requirementTypes.length) {
+        epics.push(...generateEnhancementEpics(requirementTypes));
+    }
+
+    if (!epics.length && requirementTypes.length) {
+        epics.push(...generateEnhancementEpics(requirementTypes));
+    }
+
+    if (compliance && compliance.securityPhaseRequired && !requirementTypes.includes('security')) {
+        epics.push({
+            id: 'epic-security-hardening',
+            name: 'Security Hardening & Compliance Proof',
+            description: 'Finalize security controls, generate compliance evidence, and run focused penetration tests.',
+            acceptanceCriteria: [
+                'Updated compliance checklist with evidence bundle',
+                'Targeted penetration test executed and remediated',
+                'Security runbooks updated for new features'
+            ],
+            priority: 'Critical',
+            estimatedTokens: 22000,
+            requirementType: 'security'
+        });
+    }
+
+    if ((projectPhase === 'completion' || projectPhase === 'enhancement') && !requirementTypes.includes('release_readiness')) {
+        epics.push({
+            id: 'epic-release-readiness',
+            name: 'Release Readiness & Cutover',
+            description: 'Coordinate regression sweeps, finalize release notes, and execute the production cutover plan.',
+            acceptanceCriteria: [
+                'Regression sweep completed with sign-off',
+                'Release documentation and change log published',
+                'Cutover checklist rehearsed with rollback paths'
+            ],
+            priority: 'High',
+            estimatedTokens: 18000,
+            requirementType: 'release_readiness'
+        });
+    }
+
+    if (!epics.length) {
+        return generateGreenfieldPlan(concept, requirementTypes);
+    }
+
+    return epics.map(epic => ({
+        sprint: epic.sprint || null,
+        dependencies: epic.dependencies || [],
+        estimatedTokens: epic.estimatedTokens || 24000,
+        priority: epic.priority || 'High',
+        requirementType: epic.requirementType || null,
+        ...epic
+    }));
+}
+
+function generateEnhancementEpics(requirementTypes) {
+    const templates = {
+        development_workflow: [
+            {
+                id: 'epic-dev-workflow-engine',
+                name: 'Development Workflow Command Engine',
+                description: 'Build cohesive command suite for project scaffolding, automation, and repository hygiene.',
+                acceptanceCriteria: [
+                    'Command palette covers scaffold, lint, test, and release flows',
+                    'Workspace-aware file operations implemented',
+                    'Semantic git workflow with guardrails delivered'
+                ],
+                estimatedTokens: 28000,
+                priority: 'Critical',
+                requirementType: 'development_workflow'
+            }
+        ],
+        ai_integration: [
+            {
+                id: 'epic-ai-intent-engine',
+                name: 'AI Intent Processing Layer',
+                description: 'Translate natural language intents into executable commands with guard chains and telemetry.',
+                acceptanceCriteria: [
+                    'Intent classification with confidence scoring operational',
+                    'Guard chain policy enforcement integrated',
+                    'Fallback and clarification prompts handled gracefully'
+                ],
+                estimatedTokens: 30000,
+                priority: 'Critical',
+                requirementType: 'ai_integration'
+            }
+        ],
+        distribution: [
+            {
+                id: 'epic-production-distribution',
+                name: 'Production Distribution Pipeline',
+                description: 'Deliver cross-platform packaging via Homebrew, Docker, and release automation.',
+                acceptanceCriteria: [
+                    'Homebrew tap publishing automation live',
+                    'Slim Docker image (<100MB) published with scanning',
+                    'Release orchestration with checksums and changelog automation'
+                ],
+                estimatedTokens: 26000,
+                priority: 'High',
+                requirementType: 'distribution'
+            }
+        ],
+        infrastructure: [
+            {
+                id: 'epic-infra-optimization',
+                name: 'Infrastructure Optimization & Observability',
+                description: 'Upgrade CI/CD, telemetry, and environment configuration to support new feature set.',
+                acceptanceCriteria: [
+                    'CI/CD pipelines updated for new artifacts',
+                    'Runtime observability dashboards refreshed',
+                    'Resource usage baselines captured post-change'
+                ],
+                estimatedTokens: 20000,
+                priority: 'High',
+                requirementType: 'infrastructure'
+            }
+        ],
+        data_platform: [
+            {
+                id: 'epic-data-refinement',
+                name: 'Data Platform Refinement',
+                description: 'Enhance schemas, pipelines, and analytics models to support the new capabilities.',
+                acceptanceCriteria: [
+                    'Operational schema updates deployed with migrations',
+                    'Warehouse models reflect new metrics or entities',
+                    'Data quality checks and lineage tracking updated'
+                ],
+                estimatedTokens: 24000,
+                priority: 'High',
+                requirementType: 'data_platform'
+            }
+        ],
+        api_platform: [
+            {
+                id: 'epic-api-expansion',
+                name: 'API Surface Expansion',
+                description: 'Extend API contracts, auth flows, and documentation to cover the new experiences.',
+                acceptanceCriteria: [
+                    'New endpoints implemented with consistent contracts',
+                    'Auth/authorization policies enforced for new flows',
+                    'Rate limiting and observability rules updated',
+                    'API documentation regenerated and distributed'
+                ],
+                estimatedTokens: 26000,
+                priority: 'High',
+                requirementType: 'api_platform'
+            }
+        ],
+        frontend_experience: [
+            {
+                id: 'epic-frontend-upgrade',
+                name: 'Frontend Experience Upgrade',
+                description: 'Deliver new UI workflows, dashboard widgets, and polish to the existing frontend shell.',
+                acceptanceCriteria: [
+                    'New workflows implemented with responsive layouts',
+                    'Design system components extended and documented',
+                    'Accessibility regression pass recorded',
+                    'Usage telemetry added for key interactions'
+                ],
+                estimatedTokens: 27000,
+                priority: 'High',
+                requirementType: 'frontend_experience'
+            }
+        ],
+        integration: [
+            {
+                id: 'epic-integration-upgrade',
+                name: 'Integration Enhancements',
+                description: 'Add or strengthen third-party integrations with resilience, observability, and data mapping.',
+                acceptanceCriteria: [
+                    'New connector or provider integration deployed',
+                    'Retry/backoff and dead-letter handling verified',
+                    'Integration monitoring dashboards live',
+                    'Data mapping and sync schedules documented'
+                ],
+                estimatedTokens: 25000,
+                priority: 'High',
+                requirementType: 'integration'
+            }
+        ],
+        security: [
+            {
+                id: 'epic-security-upgrade',
+                name: 'Security Guardrail Upgrade',
+                description: 'Extend security controls and policy enforcement across new cognitive workflows.',
+                acceptanceCriteria: [
+                    'Role-based guardrails cover new commands',
+                    'Secrets rotation story updated',
+                    'Security monitoring extended to AI pipelines'
+                ],
+                estimatedTokens: 21000,
+                priority: 'High',
+                requirementType: 'security'
+            }
+        ],
+        testing: [
+            {
+                id: 'epic-testing-harness',
+                name: 'Intelligent Testing Harness',
+                description: 'Expand automated testing to cover new workflows, AI decisions, and distribution paths.',
+                acceptanceCriteria: [
+                    'Guardrail regression suite automated',
+                    'Distribution smoke tests executed in CI',
+                    'Coverage maintained at agreed target'
+                ],
+                estimatedTokens: 19000,
+                priority: 'Medium',
+                requirementType: 'testing'
+            }
+        ],
+        documentation: [
+            {
+                id: 'epic-docs-upgrade',
+                name: 'Operational Documentation Refresh',
+                description: 'Update runbooks, onboarding, and integration guides to reflect new capabilities.',
+                acceptanceCriteria: [
+                    'Developer handbook updated with new workflows',
+                    'Operations runbooks updated for distribution paths',
+                    'End-user guide covers AI-powered commands'
+                ],
+                estimatedTokens: 15000,
+                priority: 'Medium',
+                requirementType: 'documentation'
+            }
+        ],
+        release_readiness: [
+            {
+                id: 'epic-release-hardening',
+                name: 'Release Hardening & Cutover Prep',
+                description: 'Complete launch rehearsals, regression sweeps, and stakeholder sign-offs for go-live.',
+                acceptanceCriteria: [
+                    'Full regression suite green on staging',
+                    'Cutover rehearsal executed with rollback validation',
+                    'Support and escalation plan endorsed',
+                    'Release notes and change log published'
+                ],
+                estimatedTokens: 20000,
+                priority: 'High',
+                requirementType: 'release_readiness'
+            }
+        ],
+        stabilization: [
+            {
+                id: 'epic-stabilization-ops',
+                name: 'Stabilization & Support Readiness',
+                description: 'Stand up hypercare operations, incident workflows, and feedback ingestion for post-launch.',
+                acceptanceCriteria: [
+                    'Hypercare support rota in place',
+                    'Incident response runbooks validated',
+                    'Feedback triage and prioritization cadence defined',
+                    'Post-launch metrics and dashboards instrumented'
+                ],
+                estimatedTokens: 18000,
+                priority: 'Medium',
+                requirementType: 'stabilization'
+            }
+        ]
+    };
+
+    const enhancementEpics = [];
+    requirementTypes.forEach(reqType => {
+        if (templates[reqType]) {
+            templates[reqType].forEach(epic => enhancementEpics.push({ ...epic }));
+        }
+    });
+
+    return enhancementEpics;
+}
+
+function assignSprintsToEpics(epics, strategy, timeline) {
+    const cloned = epics.map(epic => ({ ...epic }));
+
+    if (!cloned.length) {
+        return { epics: cloned, sprintCount: 0, breakdown: {} };
+    }
+
+    const hasPresetSprints = cloned.every(epic => epic.sprint != null && epic.sprint !== undefined);
+    if (hasPresetSprints) {
+        const breakdown = {};
+        let maxSprint = 0;
+        cloned.forEach(epic => {
+            const sprintNumber = Number(epic.sprint) || 1;
+            maxSprint = Math.max(maxSprint, sprintNumber);
+            breakdown[sprintNumber] = breakdown[sprintNumber] ? breakdown[sprintNumber] + 1 : 1;
+        });
+        return {
+            epics: cloned,
+            sprintCount: maxSprint,
+            breakdown
+        };
+    }
+
+    const desiredSprintCount = determineSprintCount(cloned.length, strategy, timeline);
+
+    if (!desiredSprintCount) {
+        return { epics: cloned, sprintCount: 0, breakdown: {} };
+    }
+
+    const perSprint = Math.max(1, Math.ceil(cloned.length / desiredSprintCount));
+    const breakdown = {};
+
+    cloned.forEach((epic, index) => {
+        const sprintNumber = Math.min(desiredSprintCount, Math.floor(index / perSprint) + 1);
+        epic.sprint = sprintNumber;
+        breakdown[sprintNumber] = breakdown[sprintNumber] ? breakdown[sprintNumber] + 1 : 1;
+    });
+
+    return {
+        epics: cloned,
+        sprintCount: desiredSprintCount,
+        breakdown
+    };
+}
+
+function determineSprintCount(epicCount, strategy, timeline) {
+    let baseCount = strategy.focus === 'foundation_building' ? 5 : 3;
+
+    if (timeline && timeline.duration && timeline.duration.inWeeks) {
+        baseCount = Math.max(1, Math.round(timeline.duration.inWeeks / 2));
+    }
+
+    const multiplier = strategy.timelineMultiplier || 1;
+    if (strategy.focus === 'enhancement_existing') {
+        baseCount = Math.max(3, Math.round(baseCount * multiplier));
+    } else {
+        baseCount = Math.max(1, Math.round(baseCount * multiplier));
+    }
+    baseCount = Math.min(8, Math.max(baseCount, Math.ceil(epicCount / 3)));
+
+    return baseCount;
+}
+
+function deriveDomainTags(epics, requirementTypes) {
+    if (requirementTypes && requirementTypes.length) {
+        return requirementTypes.map(requirementKeyToLabel);
+    }
+
+    const domainSet = new Set();
+    epics.forEach(epic => {
+        if (epic.requirementType) {
+            domainSet.add(requirementKeyToLabel(epic.requirementType));
+        } else {
+            domainSet.add(detectEpicDomain(epic));
+        }
+    });
+
+    return Array.from(domainSet);
+}
+
+function requirementKeyToLabel(key) {
+    if (!key) {
+        return 'General';
+    }
+    return REQUIREMENT_LABELS[key] || key
+        .replace(/_/g, ' ')
+        .replace(/\w/g, letter => letter.toUpperCase());
+}
+
+        function loadExample() {
+            document.getElementById('concept').value = `Build a comprehensive AI-powered customer support platform that includes:
+- Natural language understanding for ticket classification
+- Automated response generation with human-in-the-loop validation
+- Real-time sentiment analysis and escalation detection
+- Integration with existing CRM and helpdesk systems
+- Multi-channel support (email, chat, social media)
+- Analytics dashboard with predictive insights
+- Knowledge base management with AI-powered article suggestions
+- Customer journey mapping and personalization
+- Compliance and data privacy controls (SOC2, GDPR)
+- Security implementation with RBAC and encryption
+- Scalable microservices architecture on AWS
+- End-to-end monitoring and observability
+- Stabilization and performance optimization phase`;
+        }
+
+        function resetAll() {
+            document.getElementById('concept').value = '';
+            document.getElementById('output').classList.remove('active');
+            currentAnalysis = null;
+        }
+
+        function analyzeProject() {
+            const concept = document.getElementById('concept').value;
+            if (!concept.trim()) {
+                alert('Please enter a concept or project description');
+                return;
+            }
+
+            showLoading();
+            
+            setTimeout(() => {
+                const analysis = performRDAnalysis(concept);
+                currentAnalysis = analysis;
+                renderAnalysis(analysis);
+                hideLoading();
+                document.getElementById('output').classList.add('active');
+            }, 1500);
+        }
+
+        function detectComplianceRequirements(concept) {
+            const conceptLower = concept.toLowerCase();
+
+            const complianceKeywords = {
+                'GDPR': ['gdpr', 'privacy regulation', 'data protection', 'personal data', 'consent management', 'data subject rights'],
+                'HIPAA': ['hipaa', 'healthcare', 'medical data', 'phi', 'protected health information', 'health records'],
+                'SOC2': ['soc2', 'soc 2', 'security controls', 'audit compliance', 'trust services criteria'],
+                'PCI': ['pci', 'payment card', 'credit card processing', 'payment processing'],
+                'ISO27001': ['iso 27001', 'information security management'],
+                'FedRAMP': ['fedramp', 'federal cloud', 'government cloud']
+            };
+
+            const detectedCompliance = [];
+            for (const [standard, keywords] of Object.entries(complianceKeywords)) {
+                const found = keywords.some(keyword => conceptLower.includes(keyword));
+                if (found) detectedCompliance.push(standard);
+            }
+
+            return {
+                standards: detectedCompliance,
+                requiresExtendedTimeline: detectedCompliance.length > 0,
+                additionalSprints: detectedCompliance.length,
+                securityPhaseRequired: detectedCompliance.some(std =>
+                    ['GDPR', 'HIPAA', 'SOC2', 'PCI'].includes(std)
+                )
+            };
+        }
+
+        function calculateDynamicSprints(concept, domains, complexity) {
+            let baseSprints = 3; // Default for simple CRUD apps
+
+            // Complexity-based sprint calculation
+            if (complexity >= 8) baseSprints = 6; // Enterprise platforms
+            else if (complexity >= 6) baseSprints = 5; // Standard web apps with backend
+            else if (complexity >= 4) baseSprints = 4; // Moderate complexity
+
+            // Domain-based adjustments
+            const domainMultipliers = {
+                'Security': 1, // +1 sprint
+                'Data': 0.5, // +0.5 sprints for complex data pipelines
+                'Integration': 0.5, // +0.5 sprints for multiple integrations
+                'Infrastructure': 0.5 // +0.5 sprints for complex infra
+            };
+
+            let domainAdjustment = 0;
+            domains.forEach(domain => {
+                if (domainMultipliers[domain]) {
+                    domainAdjustment += domainMultipliers[domain];
+                }
+            });
+
+            // Compliance requirements
+            const compliance = detectComplianceRequirements(concept);
+            let complianceAdjustment = compliance.additionalSprints;
+
+            // Security phase for regulated industries
+            if (compliance.securityPhaseRequired) {
+                complianceAdjustment += 1;
+            }
+
+            // Integration complexity (5+ external systems)
+            const integrationCount = (concept.toLowerCase().match(/b(api|integration|third.?party|webhook|connector)b/gi) || []).length;
+            if (integrationCount >= 5) {
+                complianceAdjustment += 1;
+            }
+
+            // ML/AI pipeline detection
+            const hasML = /b(ml|ai|machine learning|artificial intelligence|neural|model|training|prediction)b/gi.test(concept);
+            if (hasML) {
+                complianceAdjustment += 1;
+            }
+
+            // Multi-tenant SaaS detection
+            const isMultiTenant = /b(multi.?tenant|saas|platform|marketplace|subscription)b/gi.test(concept);
+            if (isMultiTenant && complexity >= 7) {
+                complianceAdjustment += 1;
+            }
+
+            // Legacy system migration
+            const hasMigration = /b(migration|legacy|replacement|upgrade|modernize)b/gi.test(concept);
+            if (hasMigration) {
+                complianceAdjustment += 1;
+            }
+
+            // Stabilization needs for enterprise/production
+            const needsStabilization = complexity >= 6 || compliance.standards.length > 0;
+            if (needsStabilization) {
+                complianceAdjustment += 1;
+            }
+
+            const totalSprints = Math.min(8, baseSprints + Math.round(domainAdjustment) + complianceAdjustment);
+
+            return {
+                totalSprints,
+                breakdown: {
+                    base: baseSprints,
+                    domainAdjustment: Math.round(domainAdjustment),
+                    complianceAdjustment,
+                    compliance
+                }
+            };
+        }
+
+        function performRDAnalysis(concept) {
+    const complexityScore = calculateComplexity(concept);
+    const projectPhase = detectProjectPhase(concept);
+    const requirementTypes = analyzeRequirementTypes(concept);
+    const timelineInsights = analyzeTimelineScope(concept, complexityScore);
+    const compliance = detectComplianceRequirements(concept);
+    const strategy = selectPlanningStrategy(projectPhase, requirementTypes, timelineInsights);
+    const resolvedPhase = projectPhase === 'unknown' && strategy.focus === 'foundation_building'
+        ? 'new_project'
+        : projectPhase;
+
+    const contextualEpics = generateContextualEpics({
+        concept,
+        requirementTypes,
+        projectPhase: resolvedPhase,
+        strategy,
+        compliance
+    });
+
+    const requirementSet = new Set(requirementTypes);
+    contextualEpics.forEach(epic => {
+        if (epic.requirementType) {
+            requirementSet.add(epic.requirementType);
+        }
+    });
+    const normalizedRequirements = Array.from(requirementSet);
+
+    const sprintPlan = assignSprintsToEpics(contextualEpics, strategy, timelineInsights);
+    const epics = sprintPlan.epics;
+
+    const derivedDomains = deriveDomainTags(epics, normalizedRequirements);
+
+    const agents = generateAgentFleet(epics, complexityScore, {
+        phase: resolvedPhase,
+        requirements: normalizedRequirements,
+        timeline: timelineInsights,
+        strategy
+    });
+
+    const uniqueSprintCount = Math.max(1, new Set(epics.map(epic => epic.sprint)).size);
+    const parallelStreams = normalizedRequirements.length
+        ? Math.min(3, Math.max(1, normalizedRequirements.length))
+        : Math.min(3, uniqueSprintCount);
+
+    return {
+        concept,
+        projectPhase: resolvedPhase,
+        requirementTypes: normalizedRequirements,
+        timeline: timelineInsights,
+        strategy,
+        metrics: {
+            complexity: complexityScore,
+            estimatedAgents: agents.length,
+            parallelStreams,
+            contextEfficiency: Math.round(80 + Math.random() * 15),
+            totalEpics: epics.length,
+            sprints: sprintPlan.sprintCount,
+            compliance: compliance.standards,
+            sprintBreakdown: sprintPlan.breakdown
+        },
+        domains: derivedDomains,
+        epics,
+        agents,
+        compliance
+    };
+}
+
+
+        function calculateComplexity(concept) {
+            const factors = {
+                length: concept.length / 100,
+                technicalTerms: (concept.match(/\b(API|microservice|integration|authentication|database|AI|ML|cloud|kubernetes|docker|SOC2|GDPR|compliance|security|stabilization)\b/gi) || []).length,
+                requirements: (concept.split('\n').length + concept.split('-').length) / 2,
+                systems: (concept.match(/\b(system|platform|service|module|component)\b/gi) || []).length
+            };
+            
+            return Math.min(10, Math.round(
+                factors.length + 
+                factors.technicalTerms * 1.5 + 
+                factors.requirements * 0.5 + 
+                factors.systems * 0.8
+            ));
+        }
+
+        function extractDomains(concept) {
+            const domainKeywords = {
+                'Frontend': ['UI', 'interface', 'dashboard', 'design', 'user experience', 'responsive', 'React', 'Vue', 'Angular'],
+                'Backend': ['API', 'server', 'database', 'microservice', 'authentication', 'authorization', 'REST', 'GraphQL'],
+                'Data': ['analytics', 'insights', 'reporting', 'ETL', 'warehouse', 'lake', 'pipeline', 'ML', 'AI'],
+                'Infrastructure': ['cloud', 'AWS', 'Azure', 'Docker', 'Kubernetes', 'deployment', 'scaling', 'monitoring'],
+                'Integration': ['CRM', 'third-party', 'webhook', 'connector', 'sync', 'import', 'export', 'API integration'],
+                'Security': ['compliance', 'privacy', 'encryption', 'audit', 'GDPR', 'SOC', 'RBAC', 'pentest', 'security'],
+                'Testing': ['QA', 'test', 'validation', 'quality', 'automation', 'coverage', 'performance'],
+                'Documentation': ['guide', 'documentation', 'manual', 'knowledge base', 'training', 'onboarding']
+            };
+            
+            const detectedDomains = [];
+            for (const [domain, keywords] of Object.entries(domainKeywords)) {
+                const found = keywords.some(keyword => 
+                    concept.toLowerCase().includes(keyword.toLowerCase())
+                );
+                if (found) detectedDomains.push(domain);
+            }
+            
+            return detectedDomains.length > 0 ? detectedDomains : ['General'];
+        }
+
+        function generateGreenfieldPlan(concept, requirementTypes = []) {
+    const prioritizedTypes = new Set(requirementTypes);
+    const fundamentalTypes = ['infrastructure', 'data_platform', 'api_platform', 'frontend_experience', 'security', 'integration', 'testing'];
+
+    if (prioritizedTypes.size === 0) {
+        fundamentalTypes.forEach(type => prioritizedTypes.add(type));
+        prioritizedTypes.add('release_readiness');
+    } else {
+        ['infrastructure', 'data_platform', 'api_platform', 'security'].forEach(type => prioritizedTypes.add(type));
+        if (prioritizedTypes.has('distribution')) {
+            prioritizedTypes.add('release_readiness');
+        }
+    }
+
+    const baseLibrary = [
+        {
+            order: 1,
+            requirementType: 'infrastructure',
+            id: 'epic-infra-foundation',
+            name: 'Infrastructure Foundation',
+            description: 'Provision cloud environments, CI/CD pipelines, observability, and baseline security controls.',
+            acceptanceCriteria: [
+                'Cloud environments and networking provisioned',
+                'CI/CD pipeline executing build/test/deploy stages',
+                'Monitoring and alerting baselines live',
+                'Security baseline (secrets, IAM, hardening) applied'
+            ],
+            priority: 'Critical',
+            estimatedTokens: 42000
+        },
+        {
+            order: 2,
+            requirementType: 'data_platform',
+            id: 'epic-data-foundation',
+            name: 'Data Platform Foundation',
+            description: 'Design the operational data model, persistence layer, and analytical warehouse roadmap.',
+            acceptanceCriteria: [
+                'Operational database schema reviewed and approved',
+                'Migration and seeding strategy implemented',
+                'Analytical warehouse or lake scaffolding created',
+                'Data access patterns and ORM/data layer validated'
+            ],
+            priority: 'Critical',
+            estimatedTokens: 38000
+        },
+        {
+            order: 3,
+            requirementType: 'api_platform',
+            id: 'epic-api-foundation',
+            name: 'API Platform Foundation',
+            description: 'Deliver authenticated REST/GraphQL APIs with error contracts, rate limiting, and documentation.',
+            acceptanceCriteria: [
+                'Core domain endpoints implemented with auth and authorization',
+                'Error and status contracts documented',
+                'Rate limiting / throttling policies enforced',
+                'OpenAPI/GraphQL documentation published'
+            ],
+            priority: 'Critical',
+            estimatedTokens: 36000
+        },
+        {
+            order: 4,
+            requirementType: 'testing',
+            id: 'epic-testing-harness-foundation',
+            name: 'Testing & QA Harness Setup',
+            description: 'Establish automated unit, integration, and end-to-end testing pipelines with coverage reporting.',
+            acceptanceCriteria: [
+                'Unit testing framework configured with baseline coverage targets',
+                'Integration and contract tests executing in CI',
+                'End-to-end smoke suite automated',
+                'Coverage and quality thresholds published'
+            ],
+            priority: 'High',
+            estimatedTokens: 28000
+        },
+        {
+            order: 5,
+            requirementType: 'frontend_experience',
+            id: 'epic-frontend-foundation',
+            name: 'Frontend Experience Foundation',
+            description: 'Build the design system, routing, state management, and accessibility baseline for the web app.',
+            acceptanceCriteria: [
+                'Design system tokens and component library implemented',
+                'Routing and state management architecture in place',
+                'Dashboard and admin shell responsive across breakpoints',
+                'Accessibility sweep achieves WCAG AA baseline'
+            ],
+            priority: 'High',
+            estimatedTokens: 34000
+        },
+        {
+            order: 6,
+            requirementType: 'security',
+            id: 'epic-security-foundation',
+            name: 'Security & Compliance Baseline',
+            description: 'Implement identity, secrets management, logging, and compliance readiness for multi-tenant SaaS.',
+            acceptanceCriteria: [
+                'Identity and access controls enforced across tiers',
+                'Secrets management policy and vaulting implemented',
+                'Audit and security logging available to observability stack',
+                'Compliance checklist drafted with evidence capture plan'
+            ],
+            priority: 'Critical',
+            estimatedTokens: 30000
+        },
+        {
+            order: 7,
+            requirementType: 'integration',
+            id: 'epic-integration-enable',
+            name: 'Integration Enablement',
+            description: 'Connect third-party CRM, billing, and external services with resilient sync patterns.',
+            acceptanceCriteria: [
+                'CRM integration live with retry/backoff strategies',
+                'Billing provider integration deployed with monitoring',
+                'Webhook/connector framework instrumented',
+                'Playbooks for external API failures documented'
+            ],
+            priority: 'High',
+            estimatedTokens: 28000
+        },
+        {
+            order: 8,
+            requirementType: 'distribution',
+            id: 'epic-distribution-foundation',
+            name: 'Production Distribution Pipeline',
+            description: 'Package and distribute the platform via container and package managers with automated releases.',
+            acceptanceCriteria: [
+                'Docker images built, scanned, and published automatically',
+                'Package manager or installer available for target platforms',
+                'Release orchestration workflow automated with approvals',
+                'Rollback scripts and artifact retention policies documented'
+            ],
+            priority: 'High',
+            estimatedTokens: 26000
+        },
+        {
+            order: 9,
+            requirementType: 'release_readiness',
+            id: 'epic-release-prep',
+            name: 'Release Preparation & Operational Readiness',
+            description: 'Finalize launch checklists, monitoring runbooks, and support processes for the initial release.',
+            acceptanceCriteria: [
+                'Launch checklist approved by stakeholders',
+                'Operational runbooks and on-call rotations defined',
+                'Monitoring dashboards and alerts tuned for launch',
+                'Rollback and disaster recovery rehearsed'
+            ],
+            priority: 'High',
+            estimatedTokens: 24000
+        },
+        {
+            order: 10,
+            requirementType: 'stabilization',
+            id: 'epic-stabilization-playbook',
+            name: 'Stabilization & Support Playbooks',
+            description: 'Establish post-launch support, incident response, and customer feedback loops.',
+            acceptanceCriteria: [
+                'Hypercare support plan activated',
+                'Incident response workflows trialed',
+                'Customer feedback loop and triage defined',
+                'Backlog grooming process for post-launch issues in place'
+            ],
+            priority: 'Medium',
+            estimatedTokens: 18000
+        }
+    ];
+
+    const typesToInclude = new Set();
+    baseLibrary.forEach(item => {
+        if (fundamentalTypes.includes(item.requirementType)) {
+            typesToInclude.add(item.requirementType);
+        }
+    });
+    prioritizedTypes.forEach(type => typesToInclude.add(type));
+    typesToInclude.add('release_readiness');
+
+    const selected = baseLibrary
+        .filter(item => typesToInclude.has(item.requirementType))
+        .sort((a, b) => a.order - b.order);
+
+    if (!selected.length) {
+        return [];
+    }
+
+    return selected.map((epic, index) => {
+        const { order, ...rest } = epic;
+        const sprintNumber = Math.floor(index / 2) + 1;
+        return {
+            sprint: sprintNumber,
+            dependencies: epic.dependencies || [],
+            estimatedTokens: epic.estimatedTokens || 26000,
+            priority: epic.priority || 'High',
+            requirementType: epic.requirementType,
+            ...rest
+        };
+    });
+}
+
+
+function calculateTokensForPriority(priority) {
+            const tokenMap = {
+                'Critical': 40000,
+                'High': 30000,
+                'Medium': 20000,
+                'Low': 15000
+            };
+            return tokenMap[priority] || 25000;
+        }
+
+        function determinePriority(text) {
+            const textLower = text.toLowerCase();
+            
+            // Critical priority indicators
+            if (textLower.includes('infrastructure') || textLower.includes('database') || 
+                textLower.includes('authentication') || textLower.includes('security') ||
+                textLower.includes('core') || textLower.includes('critical') ||
+                textLower.includes('foundation') || textLower.includes('data layer')) {
+                return 'Critical';
+            }
+            
+            // High priority indicators
+            if (textLower.includes('api') || textLower.includes('integration') || 
+                textLower.includes('frontend') || textLower.includes('testing') ||
+                textLower.includes('monitoring') || textLower.includes('deployment') ||
+                textLower.includes('real-time') || textLower.includes('performance')) {
+                return 'High';
+            }
+            
+            // Low priority indicators
+            if (textLower.includes('optional') || textLower.includes('nice to have') ||
+                textLower.includes('future') || textLower.includes('enhancement') ||
+                textLower.includes('cosmetic') || textLower.includes('minor')) {
+                return 'Low';
+            }
+            
+            // Default to Medium for everything else
+            return 'Medium';
+        }
+
+        function generateAgentFleet(epics, complexity, context = {}) {
+            const agents = [];
+            const projectPhase = context.phase || 'unknown';
+            const requirementTypes = context.requirements || [];
+            const strategy = context.strategy || {};
+
+            const sprintGroups = {};
+            epics.forEach(epic => {
+                const sprintKey = epic.sprint || 1;
+                if (!sprintGroups[sprintKey]) {
+                    sprintGroups[sprintKey] = [];
+                }
+                sprintGroups[sprintKey].push(epic);
+            });
+            const sprintNumbers = Object.keys(sprintGroups).map(num => parseInt(num, 10)).filter(num => !Number.isNaN(num));
+            const finalSprint = sprintNumbers.length ? Math.max(...sprintNumbers) : 1;
+
+            const masterAgent = {
+                id: 'agent-master',
+                name: 'Master Orchestrator',
+                level: 'L0',
+                specialization: 'Program Orchestration',
+                contextUsage: 0,
+                contextLimit: 100000,
+                status: 'Active',
+                sprint: 'All',
+                prompt: generateMasterPrompt(epics, {
+                    phase: projectPhase,
+                    strategy,
+                    requirements: requirementTypes,
+                    timeline: context.timeline
+                }),
+                children: []
+            };
+            agents.push(masterAgent);
+
+            if (requirementTypes.length) {
+                const primeTemplates = {
+                    development_workflow: {
+                        name: 'Development Workflow Prime',
+                        specialization: 'Development Workflow Engineering'
+                    },
+                    ai_integration: {
+                        name: 'AI Intent Processing Prime',
+                        specialization: 'AI Intent Processing & Guardrails'
+                    },
+                    distribution: {
+                        name: 'Production Distribution Prime',
+                        specialization: 'Production Engineering & Distribution'
+                    },
+                    infrastructure: {
+                        name: 'Infrastructure Optimization Prime',
+                        specialization: 'Infrastructure & Observability'
+                    },
+                    security: {
+                        name: 'Security Compliance Prime',
+                        specialization: 'Security & Compliance Engineering'
+                    },
+                    testing: {
+                        name: 'Quality Engineering Prime',
+                        specialization: 'Automated Testing & QA'
+                    },
+                    documentation: {
+                        name: 'Documentation Prime',
+                        specialization: 'Enablement & Knowledge Management'
+                    },
+                    release_readiness: {
+                        name: 'Release Coordination Prime',
+                        specialization: 'Release Management & Cutover'
+                    },
+                    stabilization: {
+                        name: 'Stabilization Prime',
+                        specialization: 'Post-Release Stabilization'
+                    }
+                };
+
+                requirementTypes.forEach(reqType => {
+                    const associatedEpics = epics.filter(epic => epic.requirementType === reqType);
+                    if (!associatedEpics.length) {
+                        return;
+                    }
+
+                    const label = requirementKeyToLabel(reqType);
+                    const template = primeTemplates[reqType] || {
+                        name: `${label} Prime`,
+                        specialization: label
+                    };
+
+                    const earliestSprint = associatedEpics.reduce((min, epic) => {
+                        if (!epic.sprint) {
+                            return min;
+                        }
+                        return Math.min(min, epic.sprint);
+                    }, Number.MAX_SAFE_INTEGER);
+
+                    const sprintValue = earliestSprint === Number.MAX_SAFE_INTEGER ? 1 : earliestSprint;
+
+                    const primeAgent = {
+                        id: `agent-prime-${reqType}`,
+                        name: template.name,
+                        level: 'L1',
+                        specialization: template.specialization,
+                        contextUsage: 0,
+                        contextLimit: 50000,
+                        status: sprintValue === 1 ? 'Active' : 'Queued',
+                        sprint: sprintValue.toString(),
+                        prompt: template.prompt
+                            ? template.prompt(associatedEpics, context)
+                            : generatePrimePrompt(label, associatedEpics, sprintValue),
+                        children: []
+                    };
+
+                    agents.push(primeAgent);
+
+                    const complexEpics = associatedEpics.filter(epic => (epic.estimatedTokens || 0) >= 25000);
+                    complexEpics.forEach(epic => {
+                        const workerId = `agent-worker-${epic.id}`;
+                        primeAgent.children.push(workerId);
+                        agents.push({
+                            id: workerId,
+                            name: `${epic.name} Specialist`,
+                            level: 'L2',
+                            specialization: epic.name,
+                            contextUsage: 0,
+                            contextLimit: 25000,
+                            status: sprintValue === 1 ? 'Ready' : 'Queued',
+                            sprint: sprintValue.toString(),
+                            prompt: generateWorkerPrompt(epic),
+                            parent: primeAgent.id
+                        });
+                    });
+                });
+
+                const hasReleasePrime = requirementTypes.includes('release_readiness');
+                if ((projectPhase === 'completion' || projectPhase === 'enhancement') && !hasReleasePrime) {
+                    const releaseSprint = finalSprint >= 2 ? finalSprint : 1;
+                    const releaseStatus = releaseSprint === 1 ? 'Active' : 'Queued';
+                    agents.push({
+                        id: 'agent-release-coordinator',
+                        name: 'Release Coordinator',
+                        level: 'L1',
+                        specialization: 'Release Management',
+                        contextUsage: 0,
+                        contextLimit: 40000,
+                        status: releaseStatus,
+                        sprint: releaseSprint.toString(),
+                        prompt: 'Oversee release readiness, coordinate cutover rehearsals, and maintain rollback preparedness across teams.',
+                        children: []
+                    });
+                }
+
+                return agents;
+            }
+
+            Object.entries(sprintGroups).forEach(([sprint, sprintEpics]) => {
+                const domainGroups = {};
+                sprintEpics.forEach(epic => {
+                    const domain = detectEpicDomain(epic);
+                    if (!domainGroups[domain]) {
+                        domainGroups[domain] = [];
+                    }
+                    domainGroups[domain].push(epic);
+                });
+
+                Object.entries(domainGroups).slice(0, 3).forEach(([domain, domainEpics]) => {
+                    const primeAgent = {
+                        id: `agent-prime-s${sprint}-${domain.toLowerCase().replace(/\s+/g, '-')}`,
+                        name: `${domain} Prime`,
+                        level: 'L1',
+                        specialization: domain,
+                        contextUsage: 0,
+                        contextLimit: 50000,
+                        status: parseInt(sprint, 10) === 1 ? 'Active' : 'Queued',
+                        sprint: sprint,
+                        prompt: generatePrimePrompt(domain, domainEpics, sprint),
+                        children: []
+                    };
+
+                    agents.push(primeAgent);
+
+                    const complexEpics = domainEpics.filter(epic =>
+                        (epic.estimatedTokens || 0) > 30000 && epic.priority === 'Critical'
+                    );
+
+                    complexEpics.forEach(epic => {
+                        const workerId = `agent-worker-${epic.id}`;
+                        agents.push({
+                            id: workerId,
+                            name: `${epic.name} Specialist`,
+                            level: 'L2',
+                            specialization: epic.name,
+                            contextUsage: 0,
+                            contextLimit: 25000,
+                            status: parseInt(sprint, 10) === 1 ? 'Ready' : 'Queued',
+                            sprint: sprint,
+                            prompt: generateWorkerPrompt(epic),
+                            parent: primeAgent.id
+                        });
+                        primeAgent.children.push(workerId);
+                    });
+                });
+            });
+
+            if (Object.keys(sprintGroups).some(s => parseInt(s, 10) >= 3)) {
+                agents.push({
+                    id: 'agent-integration',
+                    name: 'Integration Coordinator',
+                    level: 'L1',
+                    specialization: 'Cross-Domain Integration',
+                    contextUsage: 0,
+                    contextLimit: 50000,
+                    status: 'Queued',
+                    sprint: '3+',
+                    prompt: generateIntegrationPrompt(epics),
+                    children: []
+                });
+            }
+
+            return agents;
+        }
+
+
+        function detectEpicDomain(epic) {
+            if (!epic) {
+                return 'General';
+            }
+
+            if (epic.requirementType) {
+                return requirementKeyToLabel(epic.requirementType);
+            }
+
+            const name = (epic.name || '').toLowerCase();
+            const desc = (epic.description || '').toLowerCase();
+            
+            if (name.includes('infrastructure') || desc.includes('cloud') || desc.includes('ci/cd')) {
+                return 'Infrastructure';
+            }
+            if (name.includes('data') && !name.includes('intelligence')) {
+                return 'Data';
+            }
+            if (name.includes('api') || desc.includes('endpoint')) {
+                return 'Backend';
+            }
+            if (name.includes('frontend') || name.includes('ui') || desc.includes('component')) {
+                return 'Frontend';
+            }
+            if (name.includes('test') || name.includes('quality')) {
+                return 'Testing';
+            }
+            if (name.includes('security')) {
+                return 'Security';
+            }
+            if (name.includes('integration') || desc.includes('third-party')) {
+                return 'Integration';
+            }
+            if (name.includes('track a:') || name.includes('business logic')) {
+                return 'Business';
+            }
+            if (name.includes('track b:') || name.includes('experience') || name.includes('intelligence')) {
+                return 'Experience';
+            }
+            if (name.includes('documentation')) {
+                return 'Documentation';
+            }
+            if (name.includes('stabilization')) {
+                return 'Stabilization';
+            }
+            
+            return 'General';
+        }
+
+        function generateMasterPrompt(epics, context = {}) {
+            const sprints = [...new Set(epics.map(e => e.sprint))].sort((a, b) => a - b);
+            const criticalPath = epics.filter(e => e.priority === 'Critical');
+            const sprintLoads = {};
+            sprints.forEach(sprint => {
+                sprintLoads[sprint] = epics.filter(e => e.sprint === sprint).length;
+            });
+
+            const totalSprints = sprints.length || 1;
+            const requirementLabels = (context.requirements || []).map(requirementKeyToLabel);
+            const focusSummary = requirementLabels.length ? requirementLabels.join(', ') : 'Core build-out';
+            const phaseLabel = PROJECT_PHASE_LABELS[context.phase] || PROJECT_PHASE_LABELS.unknown;
+            const timelineSummary = context.timeline && context.timeline.duration
+                ? `${context.timeline.duration.value} ${context.timeline.duration.unit}`
+                : `${totalSprints} sprint${totalSprints > 1 ? 's' : ''}`;
+            const isCompletion = context.phase === 'completion' || (context.strategy && context.strategy.focus === 'enhancement_existing');
+
+            const sprintPlanningSection = sprints.map(sprint => {
+                const items = epics
+                    .filter(e => e.sprint === sprint)
+                    .map(e => `- ${e.name} [${e.priority}]`)
+                    .join('\n');
+                return `
+**Sprint ${sprint}** (${sprintLoads[sprint]} epics)
+${items}
+`;
+            }).join('\n');
+
+            const buildGateText = () => {
+                if (totalSprints <= 1) {
+                    return `**Sprint 1 → Release Gate:**\n- Core scope accepted\n- Quality and telemetry baselines in place\n- Support and rollback plans ready`;
+                }
+
+                const gates = [];
+                const completionTemplates = [
+                    [
+                        'Feature epics accepted with QA evidence',
+                        'Operational telemetry updated for new workflows',
+                        'Integration impacts coordinated with stakeholders'
+                    ],
+                    [
+                        'Release rehearsal executed with rollback validation',
+                        'Documentation and support plans approved',
+                        'Security & compliance sign-off complete'
+                    ]
+                ];
+                const foundationTemplates = [
+                    [
+                        'Infrastructure, CI/CD, and security baseline operational',
+                        'Core data platform migrations validated',
+                        'Monitoring & alerting live for foundational services'
+                    ],
+                    [
+                        'API contracts finalized and published',
+                        'Testing harness running clean in CI',
+                        'Identity and auth flows stable'
+                    ],
+                    [
+                        'Frontend shell and design system production ready',
+                        'Security posture reviewed for new surfaces',
+                        'Performance benchmarks met on staging'
+                    ],
+                    [
+                        'External integrations certified end-to-end',
+                        'Operational dashboards and analytics verified'
+                    ]
+                ];
+
+                const templateSet = isCompletion ? completionTemplates : foundationTemplates;
+                for (let i = 1; i < totalSprints; i += 1) {
+                    const template = templateSet[Math.min(i - 1, templateSet.length - 1)];
+                    const bulletList = template.map(item => `- ${item}`).join('\n');
+                    gates.push(`**Sprint ${i} → Sprint ${i + 1} Gate:**\n${bulletList}`);
+                }
+
+                gates.push(`**Sprint ${totalSprints} → Release Gate:**\n- Launch checklist signed off\n- Support & on-call rotations confirmed\n- Rollback and recovery paths rehearsed\n- Stakeholder communications scheduled`);
+                return gates.join('\n\n');
+            };
+
+            return `You are the Master Orchestrator managing a ${totalSprints}-sprint program.
+
+## Project Overview
+- Phase: ${phaseLabel}
+- Focus Areas: ${focusSummary}
+- Total Epics: ${epics.length}
+- Critical Path Items: ${criticalPath.length}
+- Target Timeline: ${timelineSummary}
+- Resource Constraint: Maximum 3 active Prime agents per sprint
+
+## Sprint Planning
+${sprintPlanningSection}
+
+## Milestone Gates
+
+${buildGateText()}
+
+## Orchestration Playbook
+1. Activate and sequence Prime agents per sprint entry criteria
+2. Monitor token utilisation (alert at 60%, hand off at 80%)
+3. Surface cross-team dependencies daily and unblock quickly
+4. Maintain shared release tracker and stakeholder updates
+
+## Success Metrics
+- Sprint completion rate: 100%
+- Quality gate pass rate: 100%
+- Context efficiency: >70%
+- Zero critical defects in production`;
+        }
+        function generatePrimePrompt(domain, epics, sprint) {
+            const totalTokenBudget = epics.reduce((sum, e) => sum + e.estimatedTokens, 0);
+            const criticalEpics = epics.filter(e => e.priority === 'Critical');
+            
+            return `You are the ${domain} Prime Agent responsible for Sprint ${sprint}.
+
+## Sprint ${sprint} Scope
+${epics.map(epic => `
+**${epic.name}**
+- Priority: ${epic.priority}
+- Token Budget: ${epic.estimatedTokens.toLocaleString()}
+- Description: ${epic.description}
+${epic.acceptanceCriteria ? `- Acceptance Criteria:
+${epic.acceptanceCriteria.map(c => `  ✓ ${c}`).join('\n')}` : ''}
+`).join('\n')}
+
+## Resource Management
+- Total Token Budget: ${totalTokenBudget.toLocaleString()}
+- Critical Items: ${criticalEpics.length}
+- Delegation Threshold: 30,000 tokens per epic
+
+## Technical Standards
+- Production-ready code quality
+- Comprehensive error handling
+- Performance optimization required
+- Security best practices enforced
+
+## Deliverables Checklist
+${epics.map(epic => `
+**${epic.name}:**
+- [ ] Implementation complete
+- [ ] Tests written (>80% coverage)
+- [ ] Documentation updated
+- [ ] Integration verified
+- [ ] Performance validated
+`).join('\n')}
+
+## Quality Gates
+Before marking sprint complete:
+1. All acceptance criteria met
+2. Code review completed
+3. Tests passing in CI/CD
+4. Documentation current
+5. No blocking issues
+
+## Handoff Protocol
+If approaching token limit:
+1. Complete current epic
+2. Document decisions made
+3. Create integration tests
+4. Prepare successor briefing`;
+        }
+
+        function generateWorkerPrompt(epic) {
+            const acceptanceCriteria = epic.acceptanceCriteria || [
+                'Implementation complete',
+                'Tests passing',
+                'Documentation updated',
+                'Code reviewed'
+            ];
+            
+            return `You are a Specialist Agent for: ${epic.name}
+
+## Epic Details
+**Description:** ${epic.description}
+**Priority:** ${epic.priority}
+**Sprint:** ${epic.sprint}
+**Token Budget:** ${epic.estimatedTokens.toLocaleString()}
+
+## Acceptance Criteria
+${acceptanceCriteria.map((criteria, i) => `${i + 1}. ${criteria}`).join('\n')}
+
+## Technical Requirements
+1. **Code Quality**
+   - Follow established patterns
+   - Include error handling
+   - Optimize for performance
+   - Ensure maintainability
+
+2. **Testing Requirements**
+   - Unit test coverage >80%
+   - Integration tests for APIs
+   - Edge case validation
+   - Performance benchmarks
+
+3. **Documentation**
+   - Code comments for complex logic
+   - API documentation
+   - Setup/configuration guides
+   - Troubleshooting notes
+
+## Deliverable Format
+\`\`\`json
+{
+  "epic": {
+    "id": "${epic.id}",
+    "name": "${epic.name}",
+    "sprint": ${epic.sprint}
+  },
+  "status": "completed|in_progress|blocked",
+  "progress": {
+    "percentage": 0-100,
+    "criteria_met": [],
+    "remaining_work": []
+  },
+  "artifacts": {
+    "code": [],
+    "tests": [],
+    "docs": []
+  },
+  "metrics": {
+    "test_coverage": 0-100,
+    "performance_score": 0-100,
+    "tokens_used": 0-${epic.estimatedTokens}
+  },
+  "blockers": [],
+  "next_steps": []
+}
+\`\`\`
+
+## Success Definition
+This epic is complete when:
+- All acceptance criteria are verified
+- Tests provide confidence in the solution
+- Documentation enables others to maintain it
+- Integration with other components is validated`;
+        }
+        
+        function generateIntegrationPrompt(epics) {
+            // Identify integration points
+            const apiEpics = epics.filter(e => e.name.includes('API'));
+            const frontendEpics = epics.filter(e => e.name.includes('Frontend'));
+            const integrationEpics = epics.filter(e => e.name.includes('Integration'));
+            
+            return `You are the Integration Coordinator activated in Sprint 3+.
+
+## Integration Scope
+Monitor and validate integration across all system components.
+
+## Key Integration Points
+
+**API ↔ Frontend**
+- REST endpoint contracts
+- Authentication flow
+- Error handling consistency
+- Response format validation
+
+**Backend ↔ Data**
+- Database connection pooling
+- Transaction management
+- Cache invalidation
+- Query optimization
+
+**System ↔ External Services**
+- Third-party API integration
+- Webhook handling
+- Rate limit management
+- Retry mechanisms
+
+## Integration Checklist
+
+**Sprint 3 Focus:**
+- [ ] API contracts validated
+- [ ] Authentication flow tested
+- [ ] Data flow documented
+- [ ] Error scenarios covered
+- [ ] Performance baselines set
+
+**Sprint 4 Focus:**
+- [ ] External integrations operational
+- [ ] Security Phase II integrated
+- [ ] End-to-end tests passing
+- [ ] Load testing performed
+
+**Sprint 5 Focus:**
+- [ ] Full E2E validation
+- [ ] Cross-browser testing complete
+- [ ] Security scan clean
+- [ ] Monitoring configured
+- [ ] Production readiness verified
+
+## Quality Standards
+- Zero integration failures
+- <100ms service latency
+- 99.9% uptime target
+- Graceful degradation implemented
+
+## Conflict Resolution Process
+1. Identify conflicting implementations
+2. Document impact analysis
+3. Propose resolution options
+4. Facilitate team decision
+5. Implement agreed solution
+6. Validate integration
+
+## Success Metrics
+- All integration tests green
+- No breaking changes introduced
+- Performance within targets
+- Documentation complete`;
+        }
+
+        function renderAnalysis(analysis) {
+            renderMetrics(analysis.metrics);
+            renderDecomposition(analysis);
+            renderAgents(analysis.agents);
+            renderHierarchy(analysis.agents);
+        }
+
+        function renderMetrics(metrics) {
+    const metricConfigs = [
+        {
+            key: 'complexity',
+            label: 'Complexity Score',
+            value: `${metrics.complexity}/10`,
+            icon: 'candlestick-chart',
+            tone: metrics.complexity >= 8 ? 'alert' : metrics.complexity >= 6 ? 'warning' : 'positive',
+            note: metrics.complexity >= 8
+                ? 'High orchestration risk; enforce tighter quality gates.'
+                : metrics.complexity <= 4
+                    ? 'Lean build track; focus on velocity.'
+                    : 'Balanced complexity; monitor security phases.',
+            badge: metrics.complexity >= 8 ? 'High Risk' : metrics.complexity <= 4 ? 'Lean' : 'Balanced'
+        },
+        {
+            key: 'totalEpics',
+            label: 'Total Epics',
+            value: metrics.totalEpics,
+            icon: 'layers-3',
+            tone: metrics.totalEpics >= 12 ? 'warning' : 'neutral',
+            note: metrics.totalEpics >= 12
+                ? 'Dense workload—coach primes on sequencing.'
+                : 'Cadence manageable for the sprint framework.',
+            badge: metrics.totalEpics >= 12 ? 'Heavy' : null
+        },
+        {
+            key: 'sprints',
+            label: 'Sprint Count',
+            value: metrics.sprints,
+            icon: 'timer',
+            tone: metrics.sprints >= 5 ? 'neutral' : 'positive',
+            note: metrics.sprints >= 5
+                ? 'Extended program includes stabilization runway.'
+                : 'Core build cycles contained within four sprints.',
+            badge: metrics.sprints >= 5 ? 'Extended' : 'Core'
+        },
+        {
+            key: 'parallelStreams',
+            label: 'Active Agents/Sprint',
+            value: metrics.parallelStreams,
+            icon: 'workflow',
+            tone: metrics.parallelStreams >= 4 ? 'alert' : metrics.parallelStreams <= 2 ? 'positive' : 'neutral',
+            note: metrics.parallelStreams >= 4
+                ? 'High concurrency; reinforce cross-sprint syncs.'
+                : metrics.parallelStreams <= 2
+                    ? 'Focused execution path. Maintain tempo.'
+                    : 'Standard load across the program.',
+            badge: metrics.parallelStreams >= 4 ? 'High Load' : metrics.parallelStreams <= 2 ? 'Focused' : null
+        },
+        {
+            key: 'estimatedAgents',
+            label: 'Total Agents',
+            value: metrics.estimatedAgents,
+            icon: 'bot',
+            tone: metrics.estimatedAgents >= 18 ? 'warning' : metrics.estimatedAgents <= 10 ? 'positive' : 'neutral',
+            note: metrics.estimatedAgents >= 18
+                ? 'Large fleet. Coach primes to delegate efficiently.'
+                : metrics.estimatedAgents <= 10
+                    ? 'Compact squad. Amplify automation.'
+                    : 'Moderate coverage across specializations.',
+            badge: metrics.estimatedAgents >= 18 ? 'Fleet' : metrics.estimatedAgents <= 10 ? 'Lean' : null
+        },
+        {
+            key: 'contextEfficiency',
+            label: 'Context Efficiency',
+            value: `${metrics.contextEfficiency}%`,
+            icon: 'gauge',
+            tone: metrics.contextEfficiency < 70 ? 'alert' : metrics.contextEfficiency >= 90 ? 'positive' : 'neutral',
+            note: metrics.contextEfficiency < 70
+                ? 'Context drift risk. Tighten prompt scaffolding.'
+                : metrics.contextEfficiency >= 90
+                    ? 'Excellent utilisation. Keep runbooks synced.'
+                    : 'Healthy signal. Continue current governance.',
+            badge: metrics.contextEfficiency < 70 ? 'Risk' : metrics.contextEfficiency >= 90 ? 'Optimal' : null
+        }
+    ];
+
+    const metricsHTML = metricConfigs.map((metric) => {
+        return `
+            <article class="metric-card metric-card--${metric.tone}">
+                <div class="metric-card__header">
+                    <span class="metric-card__icon"><i data-lucide="${metric.icon}"></i></span>
+                    <div>
+                        <p class="metric-label">${metric.label}</p>
+                        <p class="metric-subtext">${metric.note}</p>
+                    </div>
+                </div>
+                <div class="metric-value">${metric.value}</div>
+                ${metric.badge ? `<span class="metric-badge">${metric.badge}</span>` : ''}
+            </article>
+        `;
+    }).join('');
+
+    const metricsContainer = document.getElementById('metrics');
+    if (metricsContainer) {
+        metricsContainer.innerHTML = metricsHTML;
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+}
+        function renderDecomposition(analysis) {
+            const sprintGroups = {};
+            analysis.epics.forEach((epic) => {
+                const sprintKey = epic.sprint || 1;
+                if (!sprintGroups[sprintKey]) {
+                    sprintGroups[sprintKey] = [];
+                }
+                sprintGroups[sprintKey].push(epic);
+            });
+
+            const sortedSprints = Object.keys(sprintGroups)
+                .map(Number)
+                .sort((a, b) => a - b);
+
+            const domainLabels = (analysis.domains && analysis.domains.length ? analysis.domains : ['General']);
+            const domainsHTML = domainLabels
+                .map((domain) => `<span class="domain-chip">${domain}</span>`)
+                .join('');
+
+            const phaseLabel = PROJECT_PHASE_LABELS[analysis.projectPhase] || PROJECT_PHASE_LABELS.unknown;
+            const requirementLabels = (analysis.requirementTypes || []).map(requirementKeyToLabel);
+            const focusLabels = requirementLabels.length ? requirementLabels : domainLabels;
+            const focusText = focusLabels.join(', ');
+            const timelineDescription = (analysis.timeline && analysis.timeline.duration)
+                ? `${analysis.timeline.duration.value} ${analysis.timeline.duration.unit}`
+                : 'Not specified';
+            const scopeDescription = (analysis.timeline && analysis.timeline.scope && analysis.timeline.scope !== 'unspecified')
+                ? analysis.timeline.scope.replace(/_/g, ' ')
+                : 'Not specified';
+            const strategyLabel = analysis.strategy && analysis.strategy.focus
+                ? analysis.strategy.focus.replace(/_/g, ' ')
+                : null;
+
+            const summaryItems = [
+                `<li><i data-lucide="flag"></i> Phase: ${phaseLabel}</li>`,
+                `<li><i data-lucide="target"></i> Focus: ${focusText || 'General build-out'}</li>`,
+                `<li><i data-lucide="clock"></i> Timeline: ${timelineDescription}</li>`,
+                `<li><i data-lucide="map"></i> Scope: ${scopeDescription}</li>`
+            ];
+            if (strategyLabel) {
+                summaryItems.push(`<li><i data-lucide="shuffle"></i> Strategy: ${strategyLabel}</li>`);
+            }
+            const summaryHTML = `<ul class="decomposition-summary">${summaryItems.join('')}</ul>`;
+
+            const sprintTimeline = sortedSprints
+                .map((sprintNumber) => {
+                    const sprintEpics = sprintGroups[sprintNumber];
+                    const prioritySignals = sprintEpics.filter((epic) => (epic.priority || '').toLowerCase() === 'critical').length;
+                    const gateLabel = prioritySignals >= 2 ? 'Gate Review Required' : 'Standard Gate';
+
+                    return `
+                <article class="sprint-card">
+                    <header class="sprint-card__header">
+                        <div>
+                            <p class="sprint-label">Sprint ${sprintNumber}</p>
+                            <p class="sprint-subtext">${sprintEpics.length} epics · ${prioritySignals} critical</p>
+                        </div>
+                        <span class="sprint-badge">${gateLabel}</span>
+                    </header>
+                    <ul class="sprint-epic-list">
+                        ${sprintEpics
+                            .map((epic) => `
+                                <li class="sprint-epic">
+                                    <div>
+                                        <p class="epic-title">${epic.name}</p>
+                                        <p class="epic-description">${epic.description}</p>
+                                    </div>
+                                    <span class="epic-tag epic-tag--${(epic.priority || 'medium').toLowerCase()}">${epic.priority || 'Medium'}</span>
+                                </li>
+                            `)
+                            .join('')}
+                    </ul>
+                </article>
+            `;
+                })
+                .join('');
+
+            const decompositionContainer = document.getElementById('decomposition');
+            if (decompositionContainer) {
+                decompositionContainer.innerHTML = `
+            <section class="panel-block">
+                <header class="panel-block__header">
+                    <h3>Project Context</h3>
+                </header>
+                ${summaryHTML}
+            </section>
+            <section class="panel-block">
+                <header class="panel-block__header">
+                    <h3>Focus Areas</h3>
+                </header>
+                <div class="domain-chip-row">${domainsHTML}</div>
+            </section>
+            <section class="panel-block">
+                <header class="panel-block__header">
+                    <h3>Sprint Timeline</h3>
+                </header>
+                <div class="sprint-track">${sprintTimeline}</div>
+            </section>
+        `;
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }
+        }
+
+
+        function renderAgents(agents) {
+    const agentsHTML = agents
+        .map((agent) => {
+            const statusTone = agent.status === "Active"
+                ? 'active'
+                : agent.status === "Ready"
+                    ? 'ready'
+                    : 'queued';
+            const contextUsage = Math.min(agent.contextUsage || 0, 100);
+
+            return `
+                <article class="agent-card" data-agent-id="${agent.id}">
+                    <header class="agent-card__header">
+                        <div class="agent-identity">
+                            <span class="agent-level">${agent.level}</span>
+                            <h3 class="agent-name">${agent.name}</h3>
+                            <span class="agent-specialization">${agent.specialization}</span>
+                        </div>
+                        <div class="agent-meta">
+                            <span class="agent-status agent-status--${statusTone}">${agent.status}</span>
+                            <span class="agent-sprint">${agent.sprint === 'All' ? 'All sprints' : `Sprint ${agent.sprint}`}</span>
+                        </div>
+                    </header>
+                    <dl class="agent-data">
+                        <div>
+                            <dt>Context Limit</dt>
+                            <dd>${(agent.contextLimit / 1000).toFixed(0)}K tokens</dd>
+                        </div>
+                        <div>
+                            <dt>Delegation</dt>
+                            <dd>${agent.parent ? `Reports to ${agent.parent}` : 'Autonomous orchestrator'}</dd>
+                        </div>
+                        <div>
+                            <dt>Special Notes</dt>
+                            <dd>${agent.children && agent.children.length > 0 ? `${agent.children.length} specialist${agent.children.length === 1 ? '' : 's'} attached` : 'Direct contributor'}</dd>
+                        </div>
+                    </dl>
+                    <div class="context-meter">
+                        <div class="context-meter__fill" style="width: ${contextUsage}%"></div>
+                        <span class="context-meter__label">${contextUsage}% context in use</span>
+                    </div>
+                    <button class="agent-toggle" type="button" onclick="togglePrompt('${agent.id}', event)">
+                        <span>View prompt</span>
+                        <i data-lucide="chevron-down"></i>
+                    </button>
+                    <div class="agent-prompt" id="prompt-${agent.id}">
+                        <div class="agent-prompt__actions">
+                            <button type="button" class="btn btn-ghost" onclick="copyAgentPrompt('${agent.id}', event)">
+                                <i data-lucide="copy"></i>
+                                <span>Copy prompt</span>
+                            </button>
+                        </div>
+                        <pre class="agent-prompt__content">${agent.prompt}</pre>
+                    </div>
+                </article>
+            `;
+        })
+        .join('');
+
+    const agentsContainer = document.getElementById('agents');
+    if (agentsContainer) {
+        agentsContainer.innerHTML = agentsHTML;
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+}
+        function renderHierarchy(agents) {
+    const masterAgents = agents.filter((agent) => agent.level === "L0");
+    const primes = agents.filter((agent) => agent.level === "L1");
+    const specialists = agents.filter((agent) => agent.level === "L2");
+
+    const sprintBuckets = {};
+    agents.forEach((agent) => {
+        const key = agent.sprint || 'All';
+        if (!sprintBuckets[key]) {
+            sprintBuckets[key] = [];
+        }
+        sprintBuckets[key].push(agent);
+    });
+
+    const orderedSprints = Object.keys(sprintBuckets)
+        .filter((key) => key !== 'All')
+        .sort((a, b) => {
+            const aNum = parseInt(a, 10) || 99;
+            const bNum = parseInt(b, 10) || 99;
+            return aNum - bNum;
+        });
+
+    const masterHTML = masterAgents
+        .map((agent) => `
+            <div class="hierarchy-master">
+                <div class="hierarchy-master__badge">L0</div>
+                <div>
+                    <p class="hierarchy-master__title">${agent.name}</p>
+                    <p class="hierarchy-master__subtitle">${agent.specialization}</p>
+                </div>
+                <span class="hierarchy-master__scope">All sprints</span>
+            </div>
+        `)
+        .join('');
+
+    const columnsHTML = orderedSprints
+        .map((sprint) => {
+            const bucket = sprintBuckets[sprint];
+            const sprintPrimes = bucket.filter((agent) => agent.level === "L1");
+
+            const primeHTML = sprintPrimes
+                .map((prime) => {
+                    const attached = specialists.filter((specialist) => (prime.children || []).includes(specialist.id));
+                    const specialistHTML = attached
+                        .map((specialist) => `
+                            <li class="hierarchy-specialist">
+                                <span class="hierarchy-level hierarchy-level--l2">L2</span>
+                                <span>${specialist.name}</span>
+                            </li>
+                        `)
+                        .join('');
+
+                    return `
+                        <article class="hierarchy-prime">
+                            <header>
+                                <span class="hierarchy-level hierarchy-level--l1">L1</span>
+                                <div>
+                                    <p class="hierarchy-prime__name">${prime.name}</p>
+                                    <p class="hierarchy-prime__meta">${prime.specialization}</p>
+                                </div>
+                                <span class="hierarchy-status hierarchy-status--${prime.status === 'Active' ? 'active' : prime.status === 'Ready' ? 'ready' : 'queued'}">${prime.status}</span>
+                            </header>
+                            ${attached.length > 0 ? `<ul class="hierarchy-specialist-list">${specialistHTML}</ul>` : ''}
+                        </article>
+                    `;
+                })
+                .join('');
+
+            return `
+                <section class="hierarchy-column">
+                    <header class="hierarchy-column__header">
+                        <p class="hierarchy-column__label">Sprint ${sprint}</p>
+                        <span>${bucket.length} agents</span>
+                    </header>
+                    ${primeHTML || '<p class="hierarchy-empty">No prime agents assigned.</p>'}
+                </section>
+            `;
+        })
+        .join('');
+
+    const hierarchyContainer = document.getElementById('hierarchy');
+    if (hierarchyContainer) {
+        hierarchyContainer.innerHTML = `
+            <section class="hierarchy-panel">
+                <header class="panel-block__header">
+                    <h3>Agent Hierarchy & Deployment</h3>
+                </header>
+                <div class="hierarchy-grid">
+                    <div class="hierarchy-stack">
+                        ${masterHTML}
+                    </div>
+                    <div class="hierarchy-columns">${columnsHTML}</div>
+                </div>
+                <footer class="hierarchy-summary">
+                    <div>
+                        <span class="summary-label">Total Agents</span>
+                        <strong>${agents.length}</strong>
+                    </div>
+                    <div>
+                        <span class="summary-label">Primes</span>
+                        <strong>${primes.length}</strong>
+                    </div>
+                    <div>
+                        <span class="summary-label">Specialists</span>
+                        <strong>${specialists.length}</strong>
+                    </div>
+                </footer>
+            </section>
+        `;
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+}
+        function togglePrompt(agentId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    const promptElement = document.getElementById(`prompt-${agentId}`);
+    const card = document.querySelector(`[data-agent-id="${agentId}"]`);
+    if (!promptElement || !card) {
+        return;
+    }
+
+    const isOpen = card.classList.toggle('is-open');
+    promptElement.classList.toggle('is-open', isOpen);
+
+    const toggleButton = card.querySelector('.agent-toggle i');
+    if (toggleButton) {
+        toggleButton.setAttribute('data-lucide', isOpen ? 'chevron-up' : 'chevron-down');
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+}
+function copyAgentPrompt(agentId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    if (!currentAnalysis || !currentAnalysis.agents) {
+        return;
+    }
+
+    const agent = currentAnalysis.agents.find((item) => item.id === agentId);
+    if (!agent) {
+        return;
+    }
+
+    navigator.clipboard.writeText(agent.prompt).then(() => {
+        showCopySuccess(`${agent.name} prompt copied to clipboard.`);
+    }).catch((error) => {
+        console.error('Failed to copy agent prompt:', error);
+        showCopySuccess('Unable to copy prompt. Please copy manually.');
+    });
+}
+
+        function exportJSON() {
+            if (!currentAnalysis) return;
+            
+            const phaseLabel = PROJECT_PHASE_LABELS[currentAnalysis.projectPhase] || PROJECT_PHASE_LABELS.unknown;
+            const requirementLabels = (currentAnalysis.requirementTypes || []).map(requirementKeyToLabel);
+
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                framework: 'CASPER_ATLAS_DELIVERY_v5',
+                version: '5.0',
+                project: currentAnalysis.concept,
+                projectPhase: currentAnalysis.projectPhase,
+                requirementTypes: currentAnalysis.requirementTypes,
+                timeline: currentAnalysis.timeline,
+                strategy: currentAnalysis.strategy,
+                compliance: currentAnalysis.compliance,
+                context: {
+                    phase: phaseLabel,
+                    focusAreas: requirementLabels,
+                    timeline: currentAnalysis.timeline,
+                    strategy: currentAnalysis.strategy
+                },
+                metrics: currentAnalysis.metrics,
+                domains: currentAnalysis.domains,
+                epics: currentAnalysis.epics.map(epic => ({
+                    ...epic,
+                    acceptanceCriteria: epic.acceptanceCriteria || []
+                })),
+                agents: currentAnalysis.agents.map(agent => ({
+                    ...agent,
+                    prompt: agent.prompt
+                })),
+                sprintPlan: generateSprintPlan(currentAnalysis.epics),
+                qualityGates: {
+                    focusReadiness: requirementLabels.length ? requirementLabels.map(label => `${label} ready for release`) : ['Core functionality validated'],
+                    releaseReadiness: ['Regression suite green', 'Release checklist signed', 'Rollback rehearsed']
+                }
+            };
+            
+            const jsonString = JSON.stringify(exportData, null, 2);
+            
+            navigator.clipboard.writeText(jsonString).then(() => {
+                showCopySuccess('JSON configuration copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy JSON:', err);
+                showCopySuccess('Failed to copy JSON. Please try again.');
+            });
+        }
+        
+        function generateSprintPlan(epics) {
+            const sprints = {};
+            epics.forEach(epic => {
+                const sprintKey = epic.sprint || 1;
+                if (!sprints[sprintKey]) {
+                    sprints[sprintKey] = {
+                        epics: [],
+                        estimatedTokens: 0,
+                        criticalItems: 0
+                    };
+                }
+                sprints[sprintKey].epics.push(epic.name);
+                sprints[sprintKey].estimatedTokens += epic.estimatedTokens;
+                if (epic.priority === 'Critical') {
+                    sprints[sprintKey].criticalItems++;
+                }
+            });
+            return sprints;
+        }
+
+        function exportMarkdown() {
+            if (!currentAnalysis) return;
+            
+            let markdown = `# R&D Framework Analysis v5.0\n\n`;
+            markdown += `**Generated:** ${new Date().toLocaleString()}\n\n`;
+            markdown += `## Project Concept\n${currentAnalysis.concept}\n\n`;
+            
+            markdown += `## Executive Summary\n`;
+            markdown += `- **Complexity Score:** ${currentAnalysis.metrics.complexity}/10\n`;
+            markdown += `- **Total Epics:** ${currentAnalysis.metrics.totalEpics}\n`;
+            markdown += `- **Sprint Count:** ${currentAnalysis.metrics.sprints}\n`;
+            markdown += `- **Max Active Agents/Sprint:** ${currentAnalysis.metrics.parallelStreams}\n`;
+            markdown += `- **Total Agents:** ${currentAnalysis.metrics.estimatedAgents}\n`;
+            markdown += `- **Context Efficiency Target:** ${currentAnalysis.metrics.contextEfficiency}%\n\n`;
+            
+            markdown += `## Sprint Execution Plan\n`;
+            const sprintGroups = {};
+            currentAnalysis.epics.forEach(epic => {
+                if (!sprintGroups[epic.sprint]) {
+                    sprintGroups[epic.sprint] = [];
+                }
+                sprintGroups[epic.sprint].push(epic);
+            });
+            
+            Object.entries(sprintGroups).forEach(([sprint, epics]) => {
+                markdown += `\n### Sprint ${sprint} (${epics.length} Epics)\n`;
+                epics.forEach(epic => {
+                    markdown += `\n#### ${epic.name}\n`;
+                    markdown += `- **Priority:** ${epic.priority}\n`;
+                    markdown += `- **Description:** ${epic.description}\n`;
+                    markdown += `- **Token Budget:** ${epic.estimatedTokens.toLocaleString()}\n`;
+                    if (epic.dependencies.length > 0) {
+                        markdown += `- **Dependencies:** ${epic.dependencies.join(', ')}\n`;
+                    }
+                    if (epic.featureTrack) {
+                        markdown += `- **Feature Track:** ${epic.featureTrack} (Parallel Execution)\n`;
+                    }
+                    if (epic.acceptanceCriteria && epic.acceptanceCriteria.length > 0) {
+                        markdown += `- **Acceptance Criteria:**\n`;
+                        epic.acceptanceCriteria.forEach(criteria => {
+                            markdown += `  - ✓ ${criteria}\n`;
+                        });
+                    }
+                });
+            });
+            
+            markdown += `\n## Agent Configuration\n\n`;
+            const agentsByLevel = {
+                'L0': currentAnalysis.agents.filter(a => a.level === 'L0'),
+                'L1': currentAnalysis.agents.filter(a => a.level === 'L1'),
+                'L2': currentAnalysis.agents.filter(a => a.level === 'L2')
+            };
+            
+            Object.entries(agentsByLevel).forEach(([level, agents]) => {
+                markdown += `### ${level} Agents (${agents.length})\n\n`;
+                agents.forEach(agent => {
+                    markdown += `#### ${agent.name}\n`;
+                    markdown += `- **Specialization:** ${agent.specialization}\n`;
+                    markdown += `- **Sprint:** ${agent.sprint}\n`;
+                    markdown += `- **Context Limit:** ${agent.contextLimit.toLocaleString()} tokens\n`;
+                    markdown += `- **Status:** ${agent.status}\n`;
+                    markdown += `<details>\n<summary>View Prompt</summary>\n\n\`\`\`\n${agent.prompt}\n\`\`\`\n</details>\n\n`;
+                });
+            });
+            
+            markdown += `## Implementation Notes\n\n`;
+            markdown += `### Quality Gates\n`;
+            markdown += `- Sprint 1→2: Infrastructure operational, data layer stable\n`;
+            markdown += `- Sprint 2→3: API contracts finalized, testing harnesses live\n`;
+            markdown += `- Sprint 3→4: Frontend functional, Security Phase I deployed\n`;
+            markdown += `- Sprint 4→5: Integrations operational, Security Phase II confirmed\n`;
+            markdown += `- Sprint 5→Release: All features operational, stabilization complete\n\n`;
+            
+            markdown += `### Resource Management\n`;
+            markdown += `- Maximum 3 active Prime agents per sprint\n`;
+            markdown += `- Token usage monitoring at 60% threshold\n`;
+            markdown += `- Handoff triggered at 80% capacity\n`;
+            markdown += `- Security implementation phased across sprints 3-4\n`;
+            markdown += `- Sprint 5 includes parallel feature tracks and stabilization\n`;
+            
+            navigator.clipboard.writeText(markdown).then(() => {
+                showCopySuccess('Markdown documentation copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy Markdown:', err);
+                showCopySuccess('Failed to copy Markdown. Please try again.');
+            });
+        }
+
+        function exportMindPal() {
+            if (!currentAnalysis) return;
+            
+            const mindpalConfig = {
+                name: "CASPER Atlas Delivery Workflow v5.0",
+                description: "Enterprise 5-sprint workflow with security phasing and stabilization",
+                workflow_type: "sprint_based_milestone_driven",
+                configuration: {
+                    max_agents_per_sprint: 3,
+                    handoff_threshold: 0.8,
+                    quality_gate_enforcement: true,
+                    parallel_tracks_enabled: true,
+                    security_phasing: true,
+                    stabilization_sprint: true
+                },
+                agents: currentAnalysis.agents.map(agent => ({
+                    id: agent.id,
+                    name: agent.name,
+                    role: agent.specialization,
+                    level: agent.level,
+                    sprint: agent.sprint,
+                    instructions: agent.prompt,
+                    model: agent.level === 'L0' ? 'gpt-4-turbo' : agent.level === 'L1' ? 'gpt-4' : 'gpt-3.5-turbo-16k',
+                    temperature: agent.level === 'L0' ? 0.3 : agent.level === 'L1' ? 0.5 : 0.7,
+                    max_tokens: agent.contextLimit,
+                    activation: agent.status === 'Active' ? 'immediate' : `sprint_${agent.sprint}`,
+                    children: agent.children || []
+                })),
+                connections: currentAnalysis.agents
+                    .filter(agent => agent.parent)
+                    .map(agent => ({
+                        from: agent.parent,
+                        to: agent.id,
+                        type: 'delegation',
+                        condition: 'context_threshold_exceeded',
+                        threshold: 0.8
+                    })),
+                sprints: generateDetailedSprintPlan(currentAnalysis.epics),
+                quality_gates: {
+                    sprint_1_to_2: {
+                        criteria: ['Infrastructure operational', 'Data layer stable'],
+                        validation: 'automated_tests'
+                    },
+                    sprint_2_to_3: {
+                        criteria: ['API contracts finalized', 'Testing harnesses live'],
+                        validation: 'integration_tests'
+                    },
+                    sprint_3_to_4: {
+                        criteria: ['Frontend functional', 'Security Phase I deployed'],
+                        validation: 'security_scan'
+                    },
+                    sprint_4_to_5: {
+                        criteria: ['Integrations operational', 'Security Phase II confirmed'],
+                        validation: 'compliance_check'
+                    },
+                    sprint_5_to_release: {
+                        criteria: ['Features operational', 'Stabilization complete'],
+                        validation: 'acceptance_testing'
+                    }
+                }
+            };
+            
+            const jsonString = JSON.stringify(mindpalConfig, null, 2);
+            
+            navigator.clipboard.writeText(jsonString).then(() => {
+                showCopySuccess('MindPal configuration copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy MindPal config:', err);
+                showCopySuccess('Failed to copy MindPal config. Please try again.');
+            });
+        }
+        
+        function generateDetailedSprintPlan(epics) {
+            const sprints = {};
+            epics.forEach(epic => {
+                const sprintKey = epic.sprint || 1;
+                if (!sprints[sprintKey]) {
+                    sprints[sprintKey] = {
+                        epics: [],
+                        estimatedTokens: 0,
+                        criticalItems: 0,
+                        parallelTracks: []
+                    };
+                }
+                sprints[epic.sprint].epics.push({
+                    name: epic.name,
+                    priority: epic.priority,
+                    acceptanceCriteria: epic.acceptanceCriteria || []
+                });
+                sprints[sprintKey].estimatedTokens += epic.estimatedTokens;
+                if (epic.priority === 'Critical') {
+                    sprints[sprintKey].criticalItems++;
+                }
+                if (epic.featureTrack && !sprints[epic.sprint].parallelTracks.includes(epic.featureTrack)) {
+                    sprints[epic.sprint].parallelTracks.push(epic.featureTrack);
+                }
+            });
+            return sprints;
+        }
+
+        function copyAllPrompts() {
+            if (!currentAnalysis) return;
+            
+            const prompts = currentAnalysis.agents
+                .map(agent => `// ${agent.name} (${agent.level} - ${agent.specialization})\n${agent.prompt}\n\n`)
+                .join('---\n\n');
+            
+            navigator.clipboard.writeText(prompts).then(() => {
+                showCopySuccess('All prompts copied to clipboard!');
+            });
+        }
+
+        function showCopySuccess(message) {
+            const notification = document.createElement('div');
+            notification.className = 'copy-success';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showLoading() {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            overlay.id = 'loadingOverlay';
+            overlay.innerHTML = '<div class="loading-spinner"></div>';
+            document.body.appendChild(overlay);
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.remove();
+        }
+function applyTheme(theme) {
+    const body = document.body;
+    if (!body) {
+        return;
+    }
+
+    const resolved = theme === 'warm' || theme === 'theme-warm' ? 'theme-warm' : 'theme-dark';
+
+    body.classList.remove('theme-dark', 'theme-warm');
+    body.classList.add(resolved);
+
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, resolved);
+    } catch (error) {
+        console.warn('Unable to persist theme preference', error);
+    }
+
+    const toggleBtn = document.getElementById('themeToggle');
+    if (toggleBtn) {
+        const label = toggleBtn.querySelector('[data-theme-label]');
+        const iconHolder = toggleBtn.querySelector('[data-theme-icon]');
+        const isWarm = resolved === 'theme-warm';
+
+        if (label) {
+            label.textContent = isWarm ? 'Switch to Night Mode' : 'Switch to Warm Mode';
+        }
+
+        if (iconHolder) {
+            iconHolder.innerHTML = `<i data-lucide="${isWarm ? 'sun' : 'moon'}"></i>`;
+        }
+
+        toggleBtn.setAttribute('aria-pressed', isWarm ? 'true' : 'false');
+    }
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+function initializeTheme() {
+    const stored = (() => {
+        try {
+            return localStorage.getItem(THEME_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Unable to read stored theme preference', error);
+            return null;
+        }
+    })();
+
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = stored === 'theme-warm' || stored === 'theme-dark'
+        ? stored
+        : prefersDark
+            ? 'theme-dark'
+            : 'theme-warm';
+
+    applyTheme(initial);
+
+    const toggleBtn = document.getElementById('themeToggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            toggleTheme();
+        });
+    }
+
+    if (window.matchMedia && typeof window.matchMedia === 'function') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handler = (event) => {
+            const storedTheme = (() => {
+                try {
+                    return localStorage.getItem(THEME_STORAGE_KEY);
+                } catch (error) {
+                    return null;
+                }
+            })();
+
+            if (!storedTheme) {
+                applyTheme(event.matches ? 'theme-dark' : 'theme-warm');
+            }
+        };
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', handler);
+        } else if (typeof mediaQuery.addListener === 'function') {
+            mediaQuery.addListener(handler);
+        }
+    }
+}
+
+function toggleTheme() {
+    const body = document.body;
+    if (!body) {
+        return;
+    }
+
+    const nextTheme = body.classList.contains('theme-warm') ? 'theme-dark' : 'theme-warm';
+    applyTheme(nextTheme);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeTheme();
+    const splash = document.getElementById('atlasSplash');
+    if (splash) {
+        setTimeout(() => {
+            splash.classList.add('hidden');
+            document.body.classList.remove('showing-splash');
+            splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+        }, 4000);
+    }
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+});
+    </script>
+</body>
+</html>
