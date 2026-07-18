@@ -1,0 +1,19 @@
+{
+  "name": "casper-atlas",
+  "version": "5.0.0-recovery.1",
+  "private": true,
+  "description": "Local deterministic multi-agent delivery planner",
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test tests/contracts.test.mjs",
+    "test:e2e": "playwright test",
+    "validate": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

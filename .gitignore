@@ -1,1 +1,37 @@
 .aider*
+
+# Credentials and machine-local configuration
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+.grok/
+
+# Dependencies, test output, and generated builds
+node_modules/
+build/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Personal agent, planning, and host artifacts
+.claude/
+.codex/
+.floyd/
+.omp/
+.pi/
+.planning/
+FLOYD.md
+FLOYD.md.bak
+HANDOFF.md
+Issues/
+SSOT/
+
+# Editor and operating-system artifacts
+.DS_Store
+*.swp
+*.swo
+*~
