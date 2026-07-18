@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "baseBranch": "main",
+  "publish": true,
+  "allowLocalRemote": false,
+  "gates": [
+    {
+      "name": "install",
+      "command": ["npm", "ci", "--ignore-scripts"],
+      "required": true
+    },
+    {
+      "name": "contracts",
+      "command": ["npm", "test"],
+      "required": true
+    },
+    {
+      "name": "browser-e2e",
+      "command": ["npm", "run", "test:e2e"],
+      "required": true
+    },
+    {
+      "name": "dependency-audit",
+      "command": ["npm", "audit", "--audit-level=high"],
+      "required": true
+    },
+    {
+      "name": "secret-scan",
+      "command": ["gitleaks", "dir", ".", "--redact", "--no-banner"],
+      "required": true
+    }
+  ],
+  "include": [
+    ".gitignore",
+    ".proofline.json",
+    "README.md",
+    "agents.html",
+    "media.mp4",
+    "package.json",
+    "package-lock.json",
+    "playwright.config.mjs",
+    "scripts/**",
+    "tests/**"
+  ],
+  "deny": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "*.p12",
+    "node_modules/**",
+    "build/**",
+    "dist/**",
+    "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
+    ".git/**",
+    ".grok/**",
+    ".claude/**",
+    ".codex/**",
+    ".floyd/**",
+    ".omp/**",
+    ".pi/**",
+    ".planning/**",
+    "CLAUDE.md",
+    "FLOYD.md",
+    "FLOYD.md.bak",
+    "HANDOFF.md",
+    "Issues/**",
+    "SSOT/**",
+    "*backup*",
+    "* copy*",
+    "*test-results*"
+  ]
+}
